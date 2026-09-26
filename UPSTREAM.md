@@ -52,6 +52,18 @@ git -C /tmp/upstream-halo fetch --tags          # 确保含 v2.26.1（我们的�
 > 早期版本曾用 `patch` 套补丁，实测发现它在上游改动涉及同一文件时会**整文件替换**、
 > 静默吞掉上游改动；已改为 `diff3`，此风险已消除。
 
+## 上游 CI 的本地化改动（升级时要留意）
+
+上游 `.github/workflows/halo.yaml` 的发布作业（`docker-build-and-push`、
+`build-and-publish-container-image-with-buildpacks`）在 `push to main` 时无条件执行，
+但它们依赖官方 artifact 与 registry 权限，在分叉里必然失败（历史遗留：每次 push 全红）。
+
+本仓库给这两个作业加了 `github.repository == 'halo-dev/halo'` 守卫（并留 `# fork-guard:` 标记）。
+`test` / `build` 作业**保持原样**，仍会跑上游全部单测与 spotless —— 这是有价值的回归网。
+
+> 升级时若上游重构了该 workflow，diff3 会给出冲突；请把守卫按同样方式加回，
+> 否则 push 会再次全红。`verify.sh` 会校验这两处守卫是否配对，缺失即报错。
+
 ## 升级检查清单
 
 - [ ] `check` 输出的定制改动文件，在新基线上全部确认处理完毕
