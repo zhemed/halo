@@ -250,16 +250,16 @@ public class SystemSetupEndpoint {
     @Data
     static class SetupRequest {
 
-        @Schema(requiredMode = REQUIRED, minLength = 4, maxLength = 63)
+        @Schema(requiredMode = REQUIRED, minLength = 2, maxLength = 63)
         @NotBlank
-        @Size(min = 4, max = 63)
+        @Size(min = 2, max = 63)
         @Pattern(regexp = ValidationUtils.NAME_REGEX, message = "{validation.error.username.pattern}")
         private String username;
 
-        @Schema(requiredMode = REQUIRED, minLength = 5, maxLength = 257)
+        @Schema(requiredMode = REQUIRED, minLength = 1, maxLength = 257)
         @NotBlank
         @Pattern(regexp = ValidationUtils.PASSWORD_REGEX, message = "{validation.error.password.pattern}")
-        @Size(min = 5, max = 257)
+        @Size(min = 1, max = 257)
         private String password;
 
         @Email

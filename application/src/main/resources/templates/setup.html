@@ -83,7 +83,7 @@
                 autocorrect="off"
                 autocapitalize="off"
                 maxlength="63"
-                minlength="4"
+                minlength="2"
                 required
               />
             </div>
@@ -111,7 +111,7 @@
           <div class="form-item">
             <label for="password" th:text="#{form.password.label}"></label>
             <th:block
-              th:replace="~{gateway_fragments/input :: password(id = 'password', name = 'password', required = 'true', minlength = 5, maxlength = 257, enableToggle = true)}"
+              th:replace="~{gateway_fragments/input :: password(id = 'password', name = 'password', required = 'true', minlength = 1, maxlength = 257, enableToggle = true)}"
             ></th:block>
             <p class="alert alert-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></p>
           </div>
@@ -119,7 +119,7 @@
           <div class="form-item">
             <label for="confirmPassword" th:text="#{form.confirmPassword.label}"></label>
             <th:block
-              th:replace="~{gateway_fragments/input :: password(id = 'confirmPassword', name = null, required = 'true', minlength = 5, maxlength = 257, enableToggle = true)}"
+              th:replace="~{gateway_fragments/input :: password(id = 'confirmPassword', name = null, required = 'true', minlength = 1, maxlength = 257, enableToggle = true)}"
             ></th:block>
           </div>
 
