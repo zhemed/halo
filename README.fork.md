@@ -20,8 +20,11 @@
 ```
 .dsh-build/
   Dockerfile      # 以官方镜像为基座，仅覆盖编译出的 application.jar
-  build.sh        # 一键构建：编译后端 → 回填 console 资源 → 打镜像
+  build.sh        # 一键构建：校验补丁 → 编译后端 → 回填 console 资源 → 打镜像
+  verify.sh       # 补丁完整性校验（防覆盖闸门）：缺失即失败，构建不会产出问题镜像
+  upgrade.sh      # 上游升级：check / apply(diff3 三方合并) / build
 .github/workflows/build-image.yml   # 打 tag 自动构建并推 ghcr.io
+.github/workflows/verify-patch.yml  # 任何 push/PR 都校验补丁是否还在
 UPSTREAM.md       # 上游基线 + 升级流程 + 三方 diff 脚本
 ```
 
@@ -44,6 +47,17 @@ UPSTREAM.md       # 上游基线 + 升级流程 + 三方 diff 脚本
 2. **回填 console 资源**：正因为跳过了前端构建，产物 jar 的 `ui/ui-assets/*` 会是空的（管理端白屏）。
    脚本从**官方 jar**（基座镜像内）提取 `ui/` 资源回填，并强校验 `ui/console.html` 与 `ui-assets` 数量。
    代价：console 前端资源与官方 v2.26.1 保持一致，不接受我们自己的前端改动。
+
+## 定制补丁会不会被上游覆盖？
+
+不会**静默**发生，靠两道闸：
+
+1. **构建前**：`build.sh` 先跑 `verify.sh`，定制标记缺失即终止，绝不产出"看起来正常但补丁没了"的镜像
+   （`verify.sh` 校验的是行为标记而非文件哈希，上游重整格式不影响判定）；
+2. **CI**：`verify-patch.yml` 在每次 push/PR 校验同一组标记，红叉会直接指出来。
+
+升级时若真的与上游改动撞车，`upgrade.sh` 会留下冲突标记（`ours/base/theirs` 三方内容俱全），
+不会单方面覆盖任一方。想调整定制范围时，**同步改 `verify.sh` 的期望值**，而不是绕过校验。
 
 ## 部署（docker-compose）
 

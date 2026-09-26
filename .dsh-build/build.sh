@@ -36,6 +36,14 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+# 前置闸门：补丁不完整就不构建（避免产出"看起来正常但定制丢失"的镜像）
+"$ROOT/.dsh-build/verify.sh" || {
+  echo >&2
+  echo "构建终止：定制补丁校验未通过。若确实需要临时绕过，请显式设置 SKIP_VERIFY=1。" >&2
+  [ "${SKIP_VERIFY:-0}" = "1" ] || exit 1
+  echo "警告：已按 SKIP_VERIFY=1 绕过校验，产物可能不符合分叉预期。" >&2
+}
+
 echo "== 分叉构建 =="
 echo "  源码版本 : $VERSION (commit $REV)"
 echo "  基座镜像 : $HALO_BASE"

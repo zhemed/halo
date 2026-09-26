@@ -1,0 +1,33 @@
+name: verify-patch
+
+# 独立于代码测试的"分叉补丁完整性"闸门：
+# 任何 push / PR 都跑一遍，防止将来升级或覆盖操作把定制补丁静默弄丢。
+on:
+  push:
+    branches:
+      - main
+      - "custom/**"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 校验定制补丁完整性
+        run: ./.dsh-build/verify.sh
+
+      - name: 失败时的指引
+        if: failure()
+        run: |
+          {
+            echo "### ❌ 定制补丁校验未通过"
+            echo ""
+            echo "本仓库是自维护分叉，上述补丁是**有意保留**的定制点。"
+            echo "若本次改动确实要调整定制范围，请同步更新 \`.dsh-build/verify.sh\` 里的期望值，"
+            echo "而不是绕过校验；否则恢复补丁即可。参见 \`UPSTREAM.md\`。"
+          } >> "$GITHUB_STEP_SUMMARY"
