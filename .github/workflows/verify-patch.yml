@@ -29,5 +29,5 @@ jobs:
             echo ""
             echo "本仓库是自维护分叉，上述补丁是**有意保留**的定制点。"
             echo "若本次改动确实要调整定制范围，请同步更新 \`.dsh-build/verify.sh\` 里的期望值，"
-            echo "而不是绕过校验；否则恢复补丁即可。参见 \`UPSTREAM.md\`。"
+            echo "而不是绕过校验；否则恢复补丁即可。参见 \`docs/MAINTAINING.md\`。"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -10,7 +10,7 @@
 #   2) ./.dsh-build/upgrade.sh check /tmp/upstream-halo      # 确认哪些文件是我们改的、上游改了哪些
 #   3) ./.dsh-build/upgrade.sh apply /tmp/upstream-halo      # 机械迁移，冲突文件会留下 .rej 与备份
 #   4) 处理 .rej（若有）→ ./.dsh-build/upgrade.sh build     # 构建 + 临时实例验证
-#   5) 更新 FORK_BASE 与 UPSTREAM.md → 提交 → 打 tag 发版
+#   5) 更新 FORK_BASE 与 docs/MAINTAINING.md 的基线 → 提交 → 打 tag 发版
 #
 # 原理：本仓库采用"单快照历史"，无法 git merge；因此用三方 diff：
 #   改动检测  = 上游 pristine 版本 vs 本仓库（自身文件不在对比集合内，天然排除）
@@ -195,7 +195,7 @@ apply)
   echo
   echo "下一步:"
   echo "  1) 复核上游工作区 diff 是否符合预期（尤其模板与校验注解）"
-  echo "  2) 更新 FORK_BASE 与 UPSTREAM.md 的基线记录"
+  echo "  2) 更新 FORK_BASE 与 docs/MAINTAINING.md 的基线记录"
   echo "  3) ./.dsh-build/upgrade.sh build   # 构建 + 临时实例验证"
   ;;
 

@@ -93,10 +93,10 @@ fi
 
 # --- 基线声明存在，便于升级时不迷失 ---
 [ -f FORK_BASE ] && ok "基线文件 FORK_BASE = $(tr -d '\n' < FORK_BASE)" \
-  || fail "缺少 FORK_BASE（升级流程依赖它推导基线，见 UPSTREAM.md）"
+  || fail "缺少 FORK_BASE（升级流程依赖它推导基线，见 docs/MAINTAINING.md）"
 
 # --- 构建链路声明存在 ---
-for f in .dsh-build/Dockerfile .dsh-build/build.sh .dsh-build/upgrade.sh UPSTREAM.md; do
+for f in .dsh-build/Dockerfile .dsh-build/build.sh .dsh-build/upgrade.sh docs/MAINTAINING.md; do
   [ -f "$f" ] && ok "维护基建存在：$f" || fail "缺少维护基建：$f"
 done
 
@@ -106,6 +106,6 @@ if [ "$FAIL" -eq 0 ]; then
 else
   echo "结论：定制补丁**不完整** ❌ —— 见上方 ✗ 项。"
   echo "常见原因：升级时直接覆盖了文件、或 diff3 合并冲突被草率解决。"
-  echo "处理办法：对照 UPSTREAM.md 重新套用补丁，或在冲突标记处明确取舍后重跑本校验。"
+  echo "处理办法：对照 docs/MAINTAINING.md 重新套用补丁，或在冲突标记处明确取舍后重跑本校验。"
 fi
 exit "$FAIL"
