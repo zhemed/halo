@@ -20,55 +20,44 @@
 
 ## 升级流程（以升到 2.27 为例）
 
+已脚本化：`.dsh-build/upgrade.sh`（check / apply / build）。
+
 ```bash
-# 1) 取上游新版本到临时目录（不污染本仓库）
-git clone --depth 1 --branch v2.27.0 https://github.com/halo-dev/halo.git /tmp/upstream-halo
+# 1) 取上游新版本（必须带历史：三方合并需要基线版本）
+git clone https://github.com/halo-dev/halo.git /tmp/upstream-halo
+git -C /tmp/upstream-halo fetch --tags          # 确保含 v2.26.1（我们的基线）
 
-# 2) 查清本仓库相对上游改了什么（三方 diff 的关键）
-python3 - <<'PY'
-import filecmp, os, subprocess
-UP, LOCAL = '/tmp/upstream-halo', '.'
+# 2) 体检：列出本仓库的定制改动、上游新增文件、版本基线
+./.dsh-build/upgrade.sh check /tmp/upstream-halo
 
-def upstream_files(root):
-    out = []
-    for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d not in ('.git', 'ui', 'docs', 'openspec')]
-        for f in filenames:
-            p = os.path.join(dirpath, f)
-            out.append(os.path.relpath(p, root))
-    return set(out)
+# 3) 三方合并：基线取上游 v2.26.1 的原始文件，非重叠自动合并、重叠留冲突标记
+./.dsh-build/upgrade.sh apply /tmp/upstream-halo
+#    可选：BASELINE_REF=<tag|commit> 显式指定基线版本
 
-up = upstream_files(UP)
-changed, added, removed = [], [], []
-for rel in sorted(up):
-    lp = os.path.join(LOCAL, rel)
-    if not os.path.exists(lp):
-        removed.append(rel)
-    elif not filecmp.cmp(os.path.join(UP, rel), lp, shallow=False):
-        changed.append(rel)
-# 本仓库额外新增的文件（我们自己的基建）
-tracked = subprocess.run(['git', 'ls-files'], capture_output=True, text=True).stdout.split()
-own = [p for p in tracked if p not in up]
+# 4) 若报"含冲突标记"，到 /tmp/upstream-halo 里解冲突（标记含 ours/base/theirs 三方内容）
+#    解完并复核 diff 后，把结果取回本仓库，同步更新 FORK_BASE 与本文档基线
 
-print('=== 与上游内容不同的文件（= 我们的补丁，需迁移）===')
-for p in changed: print('  M', p)
-print('=== 上游有、本仓库没有的文件（上游新增）===')
-for p in removed: print('  D', p)
-print('=== 本仓库自有文件（基建，天然保留）===')
-for p in own: print('  A', p)
-PY
-
-# 3) 迁移补丁：对上面列出的每个 `M` 文件，用新版本对应文件为基准重新应用同样的改动
-#    补丁集中且量少（例如初始化表单的 minlength / @Size），手工迁移即可，改完务必构建验证
-
-# 4) 更新本文件与构建基线，重新构建镜像验证
+# 5) 构建并用临时实例验证
+./.dsh-build/upgrade.sh build
 ```
+
+### 合并语义说明
+
+`apply` 采用 `diff3` 三方合并（ours=本仓库、base=上游基线的原始文件、theirs=新上游版本）：
+
+- **改动不重叠** → 自动合并，我们的补丁与上游新改动都会保留；
+- **改到同一区域/同一行** → 写入标准冲突标记（`<<<<<<<` / `||||||| base` / `=======` / `>>>>>>>`），
+  需人工取舍，不会静默丢弃任何一方。
+
+> 早期版本曾用 `patch` 套补丁，实测发现它在上游改动涉及同一文件时会**整文件替换**、
+> 静默吞掉上游改动；已改为 `diff3`，此风险已消除。
 
 ## 升级检查清单
 
-- [ ] 三方 diff 输出的 `M` 文件全部在新基线上重新应用
-- [ ] `gradle.properties` 版本号、`UPSTREAM.md` 基线、基座镜像 tag 三处同步更新
-- [ ] 本地构建通过并用临时卷实例验证（改动的行为确实生效）
+- [ ] `check` 输出的定制改动文件，在新基线上全部确认处理完毕
+- [ ] `apply` 无"含冲突标记"，或冲突已全部人工解决并复核 diff
+- [ ] `FORK_BASE`、`UPSTREAM.md` 基线、基座镜像 tag 三处同步更新
+- [ ] 本地构建通过，并用临时卷实例验证定制行为确实生效（如模板 minlength 值）
 - [ ] 打 tag 推送，确认 Actions 构建成功、镜像可拉取
 - [ ] 生产实例换镜像后再验证一次
 

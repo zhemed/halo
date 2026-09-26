@@ -1,6 +1,5 @@
 > ⚠️ **这是社区分叉（fork），不是 Halo 官方仓库。**
-> 上游项目：<https://github.com/halo-dev/halo>（GPL-3.0）。原 `README.md` 内容见
-> [`README.upstream.md`](README.upstream.md)。本文件说明本仓库的维护方式。
+> 上游项目：<https://github.com/halo-dev/halo>（GPL-3.0）。本文件说明本仓库的维护方式。
 
 # halo（自维护分叉）
 
