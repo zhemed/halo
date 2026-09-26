@@ -43,6 +43,24 @@
 
 ## 4. 日常操作
 
+### 4.0 部署（面向使用者）
+
+仓库根的 `install.sh` 是一键部署脚本（README 首推用法）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/zhemed/halo/main/install.sh | bash
+```
+
+行为：取 `deploy/` 下的 compose 与 env 模板 → 生成随机数据库密码 → 探测本机 IP 作为
+`halo.external-url` → `docker compose up -d` → 等就绪并打印管理端地址。
+
+**幂等**：已存在 `docker-compose.yaml` / `.env` 时跳过，不会覆盖配置与数据。
+参数：`--dir`（默认 `~/halo`）、`--url`、`--port`、`--no-start`；`-h` 看帮助。
+管道执行时传参用 `bash -s -- --dir /opt/halo`。
+
+> 改脚本后请实测三件事：① 首次准备生成 `.env`（600 权限）且随机密码；② 重复执行不改 `.env`（幂等）；
+> ③ 指定 `--port` 时 compose 端口被改写且 `docker compose config` 仍通过。
+
 ### 4.1 构建镜像
 
 ```bash
