@@ -1,0 +1,27 @@
+{
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  "include": ["env.d.ts", "src/**/*", "uc-src/**/*", "console-src/**/*"],
+  "exclude": [
+    "src/**/__tests__/*",
+    "uc-src/**/__tests__/*",
+    "console-src/**/__tests__/*",
+    "packages/**/*",
+    "src/vite/**/*"
+  ],
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "noImplicitAny": false,
+    "noEmit": false,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@uc/*": ["./uc-src/*"],
+      "@console/*": ["./console-src/*"],
+      "@halo-dev/api-client": ["./packages/api-client/dist/index"],
+      "@halo-dev/components": ["./packages/components/dist/index"],
+      "@halo-dev/richtext-editor": ["./packages/editor/dist/index"],
+      "@halo-dev/ui-shared": ["./packages/shared/dist/index"]
+    },
+    "types": ["unplugin-icons/types/vue"]
+  }
+}

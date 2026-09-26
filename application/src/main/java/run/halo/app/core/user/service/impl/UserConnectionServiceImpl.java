@@ -1,0 +1,164 @@
+package run.halo.app.core.user.service.impl;
+
+import static run.halo.app.extension.ExtensionUtil.defaultSort;
+import static run.halo.app.extension.ExtensionUtil.notDeleting;
+import static run.halo.app.extension.index.query.Queries.equal;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.Clock;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.HexFormat;
+import java.util.Optional;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import run.halo.app.core.extension.UserConnection;
+import run.halo.app.core.extension.UserConnection.UserConnectionSpec;
+import run.halo.app.core.user.service.UserConnectionService;
+import run.halo.app.event.user.UserConnectionDisconnectedEvent;
+import run.halo.app.extension.ListOptions;
+import run.halo.app.extension.Metadata;
+import run.halo.app.extension.MetadataOperator;
+import run.halo.app.extension.ReactiveExtensionClient;
+import run.halo.app.infra.exception.DuplicateNameException;
+import run.halo.app.infra.exception.OAuth2UserAlreadyBoundException;
+import tools.jackson.databind.json.JsonMapper;
+
+@Service
+public class UserConnectionServiceImpl implements UserConnectionService {
+
+    private static final int RECONNECT_MAX_ATTEMPTS = 20;
+    private static final Duration RECONNECT_RETRY_DELAY = Duration.ofMillis(100);
+
+    private final ReactiveExtensionClient client;
+
+    private final ApplicationEventPublisher eventPublisher;
+
+    private Clock clock = Clock.systemDefaultZone();
+
+    private JsonMapper mapper = JsonMapper.shared();
+
+    public UserConnectionServiceImpl(ReactiveExtensionClient client, ApplicationEventPublisher eventPublisher) {
+        this.client = client;
+        this.eventPublisher = eventPublisher;
+    }
+
+    void setClock(Clock clock) {
+        this.clock = clock;
+    }
+
+    @Override
+    public Mono<UserConnection> createUserConnection(String username, String registrationId, OAuth2User oauth2User) {
+        return getByProviderUserId(registrationId, oauth2User.getName())
+                .flatMap(
+                        connection -> Mono.<UserConnection>error(() -> new OAuth2UserAlreadyBoundException(connection)))
+                .switchIfEmpty(Mono.defer(() -> {
+                    var connection = new UserConnection();
+                    connection.setMetadata(new Metadata());
+                    var metadata = connection.getMetadata();
+                    updateUserInfo(metadata, oauth2User);
+                    metadata.setName(connectionName(registrationId, oauth2User.getName()));
+                    connection.setSpec(new UserConnectionSpec());
+                    var spec = connection.getSpec();
+                    spec.setUsername(username);
+                    spec.setProviderUserId(oauth2User.getName());
+                    spec.setRegistrationId(registrationId);
+                    spec.setUpdatedAt(clock.instant());
+                    return client.create(connection)
+                            .onErrorResume(
+                                    DuplicateNameException.class,
+                                    original -> retryCreateWhileDeleting(connection, original, RECONNECT_MAX_ATTEMPTS))
+                            .onErrorResume(original -> getByProviderUserId(registrationId, oauth2User.getName())
+                                    .flatMap(existing ->
+                                            Mono.<UserConnection>error(new OAuth2UserAlreadyBoundException(existing)))
+                                    .switchIfEmpty(Mono.error(original)));
+                }));
+    }
+
+    private Mono<UserConnection> retryCreateWhileDeleting(
+            UserConnection connection, DuplicateNameException original, int remainingAttempts) {
+        var name = connection.getMetadata().getName();
+        return Mono.defer(() -> client.fetch(UserConnection.class, name))
+                .map(Optional::of)
+                .defaultIfEmpty(Optional.empty())
+                .flatMap(existing -> {
+                    if (existing.isPresent() && existing.get().getMetadata().getDeletionTimestamp() == null) {
+                        return Mono.error(new OAuth2UserAlreadyBoundException(existing.get()));
+                    }
+                    if (remainingAttempts == 0) {
+                        return Mono.error(original);
+                    }
+                    return Mono.delay(RECONNECT_RETRY_DELAY)
+                            .then(client.create(connection))
+                            .onErrorResume(
+                                    DuplicateNameException.class,
+                                    ignored -> retryCreateWhileDeleting(connection, original, remainingAttempts - 1));
+                });
+    }
+
+    private Mono<UserConnection> updateUserConnection(UserConnection connection, OAuth2User oauth2User) {
+        connection.getSpec().setUpdatedAt(clock.instant());
+        updateUserInfo(connection.getMetadata(), oauth2User);
+        return client.update(connection);
+    }
+
+    @Override
+    public Mono<UserConnection> updateUserConnectionIfPresent(String registrationId, OAuth2User oauth2User) {
+        return getByProviderUserId(registrationId, oauth2User.getName())
+                .flatMap(connection -> updateUserConnection(connection, oauth2User));
+    }
+
+    @Override
+    public Flux<UserConnection> removeUserConnection(String registrationId, String username) {
+        return listByUsername(registrationId, username)
+                .flatMap(client::delete)
+                .doOnNext(deleted -> eventPublisher.publishEvent(new UserConnectionDisconnectedEvent(this, deleted)));
+    }
+
+    @Override
+    public Mono<UserConnection> getByProviderUserId(String registrationId, String providerUserId) {
+        var listOptions = ListOptions.builder()
+                .andQuery(equal("spec.registrationId", registrationId))
+                .andQuery(equal("spec.providerUserId", providerUserId))
+                .andQuery(notDeleting())
+                .build();
+        return client.listAll(UserConnection.class, listOptions, defaultSort()).next();
+    }
+
+    @Override
+    public Mono<Void> removeByProviderUserId(String registrationId, String providerUserId) {
+        return getByProviderUserId(registrationId, providerUserId)
+                .flatMap(client::delete)
+                .then();
+    }
+
+    private Flux<UserConnection> listByUsername(String registrationId, String username) {
+        var listOptions = ListOptions.builder()
+                .andQuery(equal("spec.registrationId", registrationId))
+                .andQuery(equal("spec.username", username))
+                .andQuery(notDeleting())
+                .build();
+        return client.listAll(UserConnection.class, listOptions, defaultSort());
+    }
+
+    private void updateUserInfo(MetadataOperator metadata, OAuth2User oauth2User) {
+        var annotations = Optional.ofNullable(metadata.getAnnotations()).orElseGet(HashMap::new);
+        metadata.setAnnotations(annotations);
+        annotations.put("auth.halo.run/oauth2-user-info", mapper.writeValueAsString(oauth2User.getAttributes()));
+    }
+
+    private static String connectionName(String registrationId, String providerUserId) {
+        try {
+            var digest = MessageDigest.getInstance("SHA-256")
+                    .digest((registrationId + '\0' + providerUserId).getBytes(StandardCharsets.UTF_8));
+            return "oauth2-" + HexFormat.of().formatHex(digest, 0, 28);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is not available", e);
+        }
+    }
+}

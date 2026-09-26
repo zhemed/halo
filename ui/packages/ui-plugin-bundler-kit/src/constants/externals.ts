@@ -1,0 +1,19 @@
+// TODO(Halo 3): Remove after legacy IIFE UI provider support ends.
+const GLOBALS = {
+  vue: "Vue",
+  "vue-router": "VueRouter",
+  pinia: "Pinia",
+  "@vueuse/core": "VueUse",
+  "@vueuse/components": "VueUse",
+  "@vueuse/router": "VueUse",
+  "@halo-dev/ui-shared": "HaloUiShared",
+  "@halo-dev/components": "HaloComponents",
+  "@halo-dev/api-client": "HaloApiClient",
+  "@halo-dev/richtext-editor": "RichTextEditor",
+  "@formkit/vue": "FormKitVue",
+  axios: "axios",
+};
+
+const EXTERNALS = Object.keys(GLOBALS) as string[];
+
+export { EXTERNALS, GLOBALS };

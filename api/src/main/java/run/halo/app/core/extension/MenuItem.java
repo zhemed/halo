@@ -1,0 +1,119 @@
+package run.halo.app.core.extension;
+
+import static io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.LinkedHashSet;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
+import org.jspecify.annotations.Nullable;
+import run.halo.app.extension.AbstractExtension;
+import run.halo.app.extension.GVK;
+import run.halo.app.extension.Ref;
+
+/** Menu item extension that describes a navigable item and its resolved rendering state. */
+@Data
+@ToString(callSuper = true)
+@EqualsAndHashCode(callSuper = true)
+@GVK(group = "", version = "v1alpha1", kind = "MenuItem", plural = "menuitems", singular = "menuitem")
+public class MenuItem extends AbstractExtension {
+
+    public static final String REQUEST_TO_UPDATE_ANNO = "halo.run/request-to-update";
+    public static final String HIERARCHY_MIGRATED_LABEL = "halo.run/menu-item-hierarchy-migrated";
+    public static final String ORIGINAL_MENU_ITEM_ANNO = "halo.run/original-menu-item-name";
+    public static final String MIGRATION_MENU_NAME_ANNO = "halo.run/menu-item-migration-menu-name";
+    public static final String MIGRATION_PARENT_NAME_ANNO = "halo.run/menu-item-migration-parent-name";
+    public static final String MIGRATION_PATH_ANNO = "halo.run/menu-item-migration-path";
+
+    /** Desired menu item configuration, including label, URL, ordering, children, and target resource. */
+    @Schema(requiredMode = REQUIRED)
+    @Nullable
+    private MenuItemSpec spec;
+
+    /** Resolved display values calculated from the desired configuration and target resource. */
+    @Nullable
+    private MenuItemStatus status;
+
+    /** HTML anchor target used when opening this menu item. */
+    public enum Target {
+        BLANK("_blank"),
+        SELF("_self"),
+        PARENT("_parent"),
+        TOP("_top");
+
+        /** HTML target attribute value. */
+        private final String value;
+
+        @JsonCreator
+        Target(String value) {
+            this.value = value;
+        }
+
+        @JsonValue
+        public String getValue() {
+            return value;
+        }
+    }
+
+    /** Desired menu item configuration. */
+    @Data
+    public static class MenuItemSpec {
+
+        /** Display name shown for the menu item. */
+        private String displayName;
+
+        /** Direct URL used by the menu item. */
+        private String href;
+
+        /** HTML anchor target used by the menu item. */
+        private Target target;
+
+        /** Sorting priority. Higher values sort before lower values where priority ordering is applied. */
+        private Integer priority;
+
+        /** Owning Menu metadata.name. */
+        @Schema(description = "Owning Menu metadata.name. Optional for compatibility with legacy raw payloads.")
+        @Nullable
+        private String menuName;
+
+        /** Parent MenuItem metadata.name in the same menu. Root items leave this unset. */
+        @Schema(description = "Parent MenuItem metadata.name in the same menu. Root items leave this unset.")
+        @Nullable
+        private String parent;
+
+        /**
+         * Child MenuItem metadata.name values shown under this item.
+         *
+         * @deprecated since 2.26.0, use {@link #menuName} and {@link #parent} instead.
+         */
+        @SuppressWarnings("java:S1133")
+        @Deprecated(since = "2.26.0")
+        @Schema(
+                deprecated = true,
+                description = "Legacy child MenuItem names. Menu hierarchy is now sourced from "
+                        + "MenuItem.spec.menuName and MenuItem.spec.parent.")
+        @ArraySchema(uniqueItems = true)
+        private LinkedHashSet<String> children;
+
+        /** Target extension reference, such as a Category, Tag, Post, or SinglePage. */
+        @Nullable
+        private Ref targetRef;
+    }
+
+    /** Resolved menu item values used for rendering. */
+    @Data
+    public static class MenuItemStatus {
+
+        /** Calculated display name after resolving targetRef, falling back to spec.displayName. */
+        @Nullable
+        private String displayName;
+
+        /** Calculated href after resolving targetRef, falling back to spec.href. */
+        @Nullable
+        private String href;
+    }
+}

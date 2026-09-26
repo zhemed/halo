@@ -1,0 +1,628 @@
+package run.halo.app.core.reconciler;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.github.zafarkhaja.semver.Version;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import org.json.JSONException;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.stubbing.Answer;
+import org.skyscreamer.jsonassert.JSONAssert;
+import org.springframework.core.retry.RetryException;
+import org.springframework.core.retry.RetryPolicy;
+import org.springframework.core.retry.RetryTemplate;
+import org.springframework.util.FileSystemUtils;
+import org.springframework.util.ResourceUtils;
+import reactor.core.Exceptions;
+import reactor.core.publisher.Mono;
+import run.halo.app.core.extension.AnnotationSetting;
+import run.halo.app.core.extension.Setting;
+import run.halo.app.core.extension.Theme;
+import run.halo.app.extension.ConfigMap;
+import run.halo.app.extension.ExtensionClient;
+import run.halo.app.extension.Metadata;
+import run.halo.app.extension.controller.Reconciler;
+import run.halo.app.extension.controller.RequeueException;
+import run.halo.app.infra.SystemVersionSupplier;
+import run.halo.app.infra.ThemeRootGetter;
+import run.halo.app.infra.utils.JsonUtils;
+import run.halo.app.theme.TemplateEngineManager;
+import run.halo.app.theme.ThemeLayoutCompatibilityChecker;
+
+/**
+ * Tests for {@link ThemeReconciler}.
+ *
+ * @author guqing
+ * @since 2.0.0
+ */
+@ExtendWith(MockitoExtension.class)
+class ThemeReconcilerTest {
+
+    @Mock
+    private ExtensionClient extensionClient;
+
+    @Mock
+    private SystemVersionSupplier systemVersionSupplier;
+
+    @Mock
+    ThemeRootGetter themeRoot;
+
+    @Mock
+    private File defaultTheme;
+
+    @Mock
+    private TemplateEngineManager templateEngineManager;
+
+    @Spy
+    private ThemeLayoutCompatibilityChecker themeLayoutCompatibilityChecker = new ThemeLayoutCompatibilityChecker();
+
+    @Spy
+    RetryTemplate retryTemplate = new RetryTemplate(RetryPolicy.builder()
+            .maxRetries(1)
+            .delay(Duration.ZERO)
+            .predicate(IllegalStateException.class::isInstance)
+            .build());
+
+    @InjectMocks
+    ThemeReconciler themeReconciler;
+
+    @TempDir
+    private Path tempDirectory;
+
+    @BeforeEach
+    void setUp() throws IOException {
+        themeReconciler.setRetryTemplate(retryTemplate);
+        defaultTheme = ResourceUtils.getFile("classpath:themes/default");
+        lenient().when(systemVersionSupplier.get()).thenReturn(Version.parse("0.0.0"));
+        lenient().when(templateEngineManager.clearCache(any())).thenReturn(Mono.empty());
+    }
+
+    @Test
+    void reconcileDelete() throws IOException, RetryException {
+        Path testWorkDir = tempDirectory.resolve("reconcile-delete");
+        Files.createDirectory(testWorkDir);
+        when(themeRoot.get()).thenReturn(testWorkDir);
+
+        Theme theme = new Theme();
+        Metadata metadata = new Metadata();
+        metadata.setName("theme-test");
+        metadata.setFinalizers(new HashSet<>());
+        metadata.getFinalizers().add("theme-protection");
+        metadata.setDeletionTimestamp(Instant.now());
+        theme.setMetadata(metadata);
+        theme.setKind(Theme.KIND);
+        theme.setApiVersion("theme.halo.run/v1alpha1");
+        Theme.ThemeSpec themeSpec = new Theme.ThemeSpec();
+        themeSpec.setSettingName("theme-test-setting");
+        theme.setSpec(themeSpec);
+
+        Path defaultThemePath = testWorkDir.resolve("theme-test");
+
+        // copy to temp directory
+        FileSystemUtils.copyRecursively(defaultTheme.toPath(), defaultThemePath);
+
+        assertThat(testWorkDir).isNotEmptyDirectory();
+        assertThat(defaultThemePath).exists();
+
+        when(extensionClient.fetch(eq(Theme.class), eq(metadata.getName()))).thenReturn(Optional.of(theme));
+        when(extensionClient.fetch(Setting.class, themeSpec.getSettingName())).thenReturn(Optional.empty());
+
+        themeReconciler.reconcile(new Reconciler.Request(metadata.getName()));
+
+        verify(extensionClient, times(1)).fetch(eq(Theme.class), eq(metadata.getName()));
+        verify(extensionClient, times(2)).fetch(eq(Setting.class), eq(themeSpec.getSettingName()));
+
+        verify(extensionClient, times(2)).list(eq(AnnotationSetting.class), any(), any());
+
+        assertThat(Files.exists(testWorkDir)).isTrue();
+        assertThat(Files.exists(defaultThemePath)).isFalse();
+    }
+
+    @Test
+    void reconcileDeleteRetry() {
+        var theme = fakeTheme();
+        var metadata = theme.getMetadata();
+        metadata.setDeletionTimestamp(Instant.now());
+        metadata.setFinalizers(new HashSet<>());
+        metadata.getFinalizers().add("theme-protection");
+
+        when(extensionClient.fetch(Theme.class, "theme-test")).thenReturn(Optional.of(theme));
+
+        Path testWorkDir = tempDirectory.resolve("reconcile-delete");
+        when(themeRoot.get()).thenReturn(testWorkDir);
+
+        final ThemeReconciler reconciler = new ThemeReconciler(
+                extensionClient,
+                themeRoot,
+                systemVersionSupplier,
+                templateEngineManager,
+                themeLayoutCompatibilityChecker);
+
+        final int[] retryFlags = {0, 0};
+        when(extensionClient.fetch(eq(Setting.class), eq("theme-test-setting")))
+                .thenAnswer((Answer<Optional<Setting>>) invocation -> {
+                    retryFlags[0]++;
+                    // retry 2 times
+                    if (retryFlags[0] < 3) {
+                        return Optional.of(new Setting());
+                    }
+                    return Optional.empty();
+                });
+
+        when(extensionClient.list(eq(AnnotationSetting.class), any(), eq(null)))
+                .thenAnswer((Answer<List<AnnotationSetting>>) invocation -> {
+                    retryFlags[1]++;
+                    // retry 2 times
+                    if (retryFlags[1] < 3) {
+                        return List.of(new AnnotationSetting());
+                    }
+                    return List.of();
+                });
+
+        reconciler.reconcile(new Reconciler.Request(metadata.getName()));
+
+        String settingName = theme.getSpec().getSettingName();
+        verify(extensionClient, times(1)).fetch(eq(Theme.class), eq(metadata.getName()));
+        verify(extensionClient, times(3)).fetch(eq(Setting.class), eq(settingName));
+        verify(extensionClient, times(3)).list(eq(AnnotationSetting.class), any(), eq(null));
+        verify(templateEngineManager).clearCache(eq(metadata.getName()));
+    }
+
+    @Test
+    void reconcileDeleteRetryWhenThrowException() {
+        var theme = fakeTheme();
+        theme.getMetadata().setDeletionTimestamp(Instant.now());
+        theme.getMetadata().setFinalizers(new HashSet<>());
+        theme.getMetadata().getFinalizers().add("theme-protection");
+
+        when(extensionClient.fetch(Theme.class, "theme-test")).thenReturn(Optional.of(theme));
+
+        when(extensionClient.fetch(Setting.class, "theme-test-setting")).thenReturn(Optional.of(new Setting()));
+
+        String settingName = theme.getSpec().getSettingName();
+        assertThatThrownBy(() -> themeReconciler.reconcile(
+                        new Reconciler.Request(theme.getMetadata().getName())))
+                .satisfies(t -> {
+                    var e = Exceptions.unwrap(t);
+                    assertThat(e).isInstanceOf(RetryException.class);
+                });
+        verify(extensionClient, times(3)).fetch(eq(Setting.class), eq(settingName));
+    }
+
+    @Test
+    void shouldBeFailedIfVersionNotSatisfied() {
+        when(systemVersionSupplier.get()).thenReturn(Version.parse("2.3.0"));
+        var testWorkDir = tempDirectory.resolve("reconcile-delete");
+        when(themeRoot.get()).thenReturn(testWorkDir);
+        var theme = fakeTheme();
+        theme.setStatus(null);
+        theme.getSpec().setRequires(">2.3.0");
+        theme.getSpec().setSettingName(null);
+        when(extensionClient.fetch(Theme.class, "theme-test")).thenReturn(Optional.of(theme));
+        var reconciler = new ThemeReconciler(
+                extensionClient,
+                themeRoot,
+                systemVersionSupplier,
+                templateEngineManager,
+                themeLayoutCompatibilityChecker);
+
+        reconciler.reconcile(new Reconciler.Request(theme.getMetadata().getName()));
+
+        var themeUpdateCaptor = ArgumentCaptor.forClass(Theme.class);
+        verify(extensionClient).update(themeUpdateCaptor.capture());
+        Theme value = themeUpdateCaptor.getValue();
+        assertThat(value.getStatus()).isNotNull();
+        assertThat(value.getStatus().getConditions().peekFirst().getType()).isEqualTo(Theme.ThemePhase.FAILED.name());
+        assertThat(value.getStatus().getPhase()).isEqualTo(Theme.ThemePhase.FAILED);
+    }
+
+    @Test
+    void shouldBeReadyIfVersionSatisfied() {
+        when(systemVersionSupplier.get()).thenReturn(Version.parse("2.3.0"));
+        var testWorkDir = tempDirectory.resolve("reconcile-delete");
+        when(themeRoot.get()).thenReturn(testWorkDir);
+        var theme = fakeTheme();
+        theme.setStatus(null);
+        theme.getSpec().setRequires(">=2.3.0");
+        theme.getSpec().setSettingName(null);
+        when(extensionClient.fetch(Theme.class, "theme-test")).thenReturn(Optional.of(theme));
+        var reconciler = new ThemeReconciler(
+                extensionClient,
+                themeRoot,
+                systemVersionSupplier,
+                templateEngineManager,
+                themeLayoutCompatibilityChecker);
+        var themeUpdateCaptor = ArgumentCaptor.forClass(Theme.class);
+        reconciler.reconcile(new Reconciler.Request(theme.getMetadata().getName()));
+        verify(extensionClient).update(themeUpdateCaptor.capture());
+        assertThat(themeUpdateCaptor.getValue().getStatus().getPhase()).isEqualTo(Theme.ThemePhase.READY);
+        assertThat(themeUpdateCaptor.getValue().getStatus().getInDevelopment()).isFalse();
+    }
+
+    @Test
+    void shouldMarkThemeAsInDevelopmentWhenDevelopmentIndicatorsExist() throws IOException {
+        when(systemVersionSupplier.get()).thenReturn(Version.parse("2.3.0"));
+        var testWorkDir = tempDirectory.resolve("reconcile-status");
+        Files.createDirectories(testWorkDir.resolve("theme-test").resolve(".git"));
+        when(themeRoot.get()).thenReturn(testWorkDir);
+        var theme = fakeTheme();
+        theme.setStatus(null);
+        theme.getSpec().setRequires(">=2.3.0");
+        theme.getSpec().setSettingName(null);
+        when(extensionClient.fetch(Theme.class, "theme-test")).thenReturn(Optional.of(theme));
+        var reconciler = new ThemeReconciler(
+                extensionClient,
+                themeRoot,
+                systemVersionSupplier,
+                templateEngineManager,
+                themeLayoutCompatibilityChecker);
+        var themeUpdateCaptor = ArgumentCaptor.forClass(Theme.class);
+
+        reconciler.reconcile(new Reconciler.Request(theme.getMetadata().getName()));
+
+        verify(extensionClient).update(themeUpdateCaptor.capture());
+        assertThat(themeUpdateCaptor.getValue().getStatus().getInDevelopment()).isTrue();
+    }
+
+    @Test
+    void shouldResolveThemeScreenshotWhenSupportedFileExists() throws IOException {
+        when(systemVersionSupplier.get()).thenReturn(Version.parse("2.3.0"));
+        var testWorkDir = tempDirectory.resolve("reconcile-screenshot");
+        Files.createDirectories(testWorkDir.resolve("theme-test"));
+        Files.writeString(testWorkDir.resolve("theme-test").resolve("screenshot.png"), "fake screenshot");
+        when(themeRoot.get()).thenReturn(testWorkDir);
+        var theme = fakeTheme();
+        theme.setStatus(null);
+        theme.getSpec().setRequires(">=2.3.0");
+        theme.getSpec().setSettingName(null);
+        when(extensionClient.fetch(Theme.class, "theme-test")).thenReturn(Optional.of(theme));
+        var themeUpdateCaptor = ArgumentCaptor.forClass(Theme.class);
+
+        themeReconciler.reconcile(new Reconciler.Request(theme.getMetadata().getName()));
+
+        verify(extensionClient).update(themeUpdateCaptor.capture());
+        assertThat(themeUpdateCaptor.getValue().getStatus().getScreenshot())
+                .isEqualTo("/themes/theme-test/screenshot.png");
+    }
+
+    @Test
+    void shouldResolveThemeScreenshotByDeterministicPriority() throws IOException {
+        when(systemVersionSupplier.get()).thenReturn(Version.parse("2.3.0"));
+        var testWorkDir = tempDirectory.resolve("reconcile-screenshot-priority");
+        Files.createDirectories(testWorkDir.resolve("theme-test"));
+        Files.writeString(testWorkDir.resolve("theme-test").resolve("screenshot.webp"), "fake webp");
+        Files.writeString(testWorkDir.resolve("theme-test").resolve("screenshot.jpg"), "fake jpg");
+        Files.writeString(testWorkDir.resolve("theme-test").resolve("screenshot.jpeg"), "fake jpeg");
+        when(themeRoot.get()).thenReturn(testWorkDir);
+        var theme = fakeTheme();
+        theme.setStatus(null);
+        theme.getSpec().setRequires(">=2.3.0");
+        theme.getSpec().setSettingName(null);
+        when(extensionClient.fetch(Theme.class, "theme-test")).thenReturn(Optional.of(theme));
+        var themeUpdateCaptor = ArgumentCaptor.forClass(Theme.class);
+
+        themeReconciler.reconcile(new Reconciler.Request(theme.getMetadata().getName()));
+
+        verify(extensionClient).update(themeUpdateCaptor.capture());
+        assertThat(themeUpdateCaptor.getValue().getStatus().getScreenshot())
+                .isEqualTo("/themes/theme-test/screenshot.jpeg");
+    }
+
+    @Test
+    void shouldClearThemeScreenshotWhenSupportedFileDoesNotExist() throws IOException {
+        when(systemVersionSupplier.get()).thenReturn(Version.parse("2.3.0"));
+        var testWorkDir = tempDirectory.resolve("reconcile-missing-screenshot");
+        Files.createDirectories(testWorkDir.resolve("theme-test"));
+        when(themeRoot.get()).thenReturn(testWorkDir);
+        var theme = fakeTheme();
+        var status = new Theme.ThemeStatus();
+        status.setScreenshot("/themes/theme-test/screenshot.png");
+        theme.setStatus(status);
+        theme.getSpec().setRequires(">=2.3.0");
+        theme.getSpec().setSettingName(null);
+        when(extensionClient.fetch(Theme.class, "theme-test")).thenReturn(Optional.of(theme));
+        var themeUpdateCaptor = ArgumentCaptor.forClass(Theme.class);
+
+        themeReconciler.reconcile(new Reconciler.Request(theme.getMetadata().getName()));
+
+        verify(extensionClient).update(themeUpdateCaptor.capture());
+        assertThat(themeUpdateCaptor.getValue().getStatus().getScreenshot()).isNull();
+    }
+
+    @Test
+    void shouldResolveThemeUiBundleUrlsWhenBundleFilesExist() throws IOException {
+        when(systemVersionSupplier.get()).thenReturn(Version.parse("2.3.0"));
+        var testWorkDir = tempDirectory.resolve("reconcile-theme-ui");
+        Files.createDirectories(
+                testWorkDir.resolve("theme-test").resolve("ui-plugin").resolve("dist"));
+        Files.writeString(
+                testWorkDir
+                        .resolve("theme-test")
+                        .resolve("ui-plugin")
+                        .resolve("dist")
+                        .resolve("main.js"),
+                "fake js");
+        Files.writeString(
+                testWorkDir
+                        .resolve("theme-test")
+                        .resolve("ui-plugin")
+                        .resolve("dist")
+                        .resolve("style.css"),
+                "fake css");
+        when(themeRoot.get()).thenReturn(testWorkDir);
+        var theme = fakeTheme();
+        theme.setStatus(null);
+        theme.getSpec().setVersion("1.2.3");
+        theme.getSpec().setRequires(">=2.3.0");
+        theme.getSpec().setSettingName(null);
+        when(extensionClient.fetch(Theme.class, "theme-test")).thenReturn(Optional.of(theme));
+        var themeUpdateCaptor = ArgumentCaptor.forClass(Theme.class);
+
+        themeReconciler.reconcile(new Reconciler.Request(theme.getMetadata().getName()));
+
+        verify(extensionClient).update(themeUpdateCaptor.capture());
+        var status = themeUpdateCaptor.getValue().getStatus();
+        assertThat(status.getEntry()).isEqualTo("/themes/theme-test/ui-plugin/assets/main.js?v=1.2.3");
+        assertThat(status.getStylesheet()).isEqualTo("/themes/theme-test/ui-plugin/assets/style.css?v=1.2.3");
+    }
+
+    @Test
+    void shouldClearThemeUiBundleUrlsWhenBundleFilesDoNotExist() throws IOException {
+        when(systemVersionSupplier.get()).thenReturn(Version.parse("2.3.0"));
+        var testWorkDir = tempDirectory.resolve("reconcile-missing-theme-ui");
+        Files.createDirectories(testWorkDir.resolve("theme-test"));
+        when(themeRoot.get()).thenReturn(testWorkDir);
+        var theme = fakeTheme();
+        var status = new Theme.ThemeStatus();
+        status.setEntry("/themes/theme-test/ui-plugin/assets/main.js?v=1.2.3");
+        status.setStylesheet("/themes/theme-test/ui-plugin/assets/style.css?v=1.2.3");
+        theme.setStatus(status);
+        theme.getSpec().setVersion("1.2.3");
+        theme.getSpec().setRequires(">=2.3.0");
+        theme.getSpec().setSettingName(null);
+        when(extensionClient.fetch(Theme.class, "theme-test")).thenReturn(Optional.of(theme));
+        var themeUpdateCaptor = ArgumentCaptor.forClass(Theme.class);
+
+        themeReconciler.reconcile(new Reconciler.Request(theme.getMetadata().getName()));
+
+        verify(extensionClient).update(themeUpdateCaptor.capture());
+        assertThat(themeUpdateCaptor.getValue().getStatus().getEntry()).isNull();
+        assertThat(themeUpdateCaptor.getValue().getStatus().getStylesheet()).isNull();
+    }
+
+    @Test
+    void shouldReportSupportedPageLayoutWhenCompatible() throws IOException {
+        when(systemVersionSupplier.get()).thenReturn(Version.parse("2.3.0"));
+        var testWorkDir = tempDirectory.resolve("reconcile-supported-layout");
+        var themePath = testWorkDir.resolve("theme-test");
+        Files.createDirectories(themePath.resolve("templates"));
+        Files.writeString(themePath.resolve("templates").resolve("layout.html"), """
+                <!doctype html>
+                <html xmlns:th="https://www.thymeleaf.org" th:fragment="html (head, content)">
+                  <head><th:block th:replace="${head}" /></head>
+                  <body><th:block th:replace="${content}" /></body>
+                </html>
+                """);
+        when(themeRoot.get()).thenReturn(testWorkDir);
+        var theme = fakeTheme();
+        theme.setStatus(null);
+        theme.getSpec().setRequires(">=2.3.0");
+        theme.getSpec().setSettingName(null);
+        when(extensionClient.fetch(Theme.class, "theme-test")).thenReturn(Optional.of(theme));
+        var themeUpdateCaptor = ArgumentCaptor.forClass(Theme.class);
+
+        themeReconciler.reconcile(new Reconciler.Request(theme.getMetadata().getName()));
+
+        verify(extensionClient).update(themeUpdateCaptor.capture());
+        var status = themeUpdateCaptor.getValue().getStatus();
+        assertThat(status.getPhase()).isEqualTo(Theme.ThemePhase.READY);
+        assertThat(status.getPageLayout().getState()).isEqualTo(Theme.PageLayoutState.SUPPORTED);
+        assertThat(status.getPageLayout().getTemplate()).isEqualTo("templates/layout.html");
+    }
+
+    @Test
+    void shouldReportMissingPageLayoutWithoutFailingTheme() throws IOException {
+        when(systemVersionSupplier.get()).thenReturn(Version.parse("2.3.0"));
+        var testWorkDir = tempDirectory.resolve("reconcile-missing-layout");
+        Files.createDirectories(testWorkDir.resolve("theme-test"));
+        when(themeRoot.get()).thenReturn(testWorkDir);
+        var theme = fakeTheme();
+        theme.setStatus(null);
+        theme.getSpec().setRequires(">=2.3.0");
+        theme.getSpec().setSettingName(null);
+        when(extensionClient.fetch(Theme.class, "theme-test")).thenReturn(Optional.of(theme));
+        var themeUpdateCaptor = ArgumentCaptor.forClass(Theme.class);
+
+        themeReconciler.reconcile(new Reconciler.Request(theme.getMetadata().getName()));
+
+        verify(extensionClient).update(themeUpdateCaptor.capture());
+        var status = themeUpdateCaptor.getValue().getStatus();
+        assertThat(status.getPhase()).isEqualTo(Theme.ThemePhase.READY);
+        assertThat(status.getPageLayout().getState()).isEqualTo(Theme.PageLayoutState.MISSING);
+        assertThat(status.getPageLayout().getReason()).isEqualTo("MissingLayoutTemplate");
+    }
+
+    @Test
+    void shouldReportInvalidPageLayoutWithoutFailingTheme() throws IOException {
+        when(systemVersionSupplier.get()).thenReturn(Version.parse("2.3.0"));
+        var testWorkDir = tempDirectory.resolve("reconcile-invalid-layout");
+        var themePath = testWorkDir.resolve("theme-test");
+        Files.createDirectories(themePath.resolve("templates"));
+        Files.writeString(themePath.resolve("templates").resolve("layout.html"), """
+                <!doctype html>
+                <html xmlns:th="https://www.thymeleaf.org" th:fragment="layout (head, content)">
+                  <body><th:block th:replace="${content}" /></body>
+                </html>
+                """);
+        when(themeRoot.get()).thenReturn(testWorkDir);
+        var theme = fakeTheme();
+        theme.setStatus(null);
+        theme.getSpec().setRequires(">=2.3.0");
+        theme.getSpec().setSettingName(null);
+        when(extensionClient.fetch(Theme.class, "theme-test")).thenReturn(Optional.of(theme));
+        var themeUpdateCaptor = ArgumentCaptor.forClass(Theme.class);
+
+        themeReconciler.reconcile(new Reconciler.Request(theme.getMetadata().getName()));
+
+        verify(extensionClient).update(themeUpdateCaptor.capture());
+        var status = themeUpdateCaptor.getValue().getStatus();
+        assertThat(status.getPhase()).isEqualTo(Theme.ThemePhase.READY);
+        assertThat(status.getPageLayout().getState()).isEqualTo(Theme.PageLayoutState.INVALID);
+        assertThat(status.getPageLayout().getReason()).isEqualTo("UnsupportedLayoutFragment");
+    }
+
+    @Test
+    void shouldReevaluatePageLayoutStatusOnReconcile() throws IOException {
+        when(systemVersionSupplier.get()).thenReturn(Version.parse("2.3.0"));
+        var testWorkDir = tempDirectory.resolve("reconcile-layout-reload");
+        var themePath = testWorkDir.resolve("theme-test");
+        Files.createDirectories(themePath.resolve("templates"));
+        when(themeRoot.get()).thenReturn(testWorkDir);
+        var theme = fakeTheme();
+        theme.setStatus(null);
+        theme.getSpec().setRequires(">=2.3.0");
+        theme.getSpec().setSettingName(null);
+
+        themeReconciler.reconcileStatus(theme);
+        assertThat(theme.getStatus().getPageLayout().getState()).isEqualTo(Theme.PageLayoutState.MISSING);
+
+        Files.writeString(themePath.resolve("templates").resolve("layout.html"), """
+                <!doctype html>
+                <html xmlns:th="https://www.thymeleaf.org" th:fragment="html (head, content)">
+                  <head><th:block th:replace="${head}" /></head>
+                  <body><th:block th:replace="${content}" /></body>
+                </html>
+                """);
+
+        themeReconciler.reconcileStatus(theme);
+        assertThat(theme.getStatus().getPageLayout().getState()).isEqualTo(Theme.PageLayoutState.SUPPORTED);
+    }
+
+    private Theme fakeTheme() {
+        Theme theme = new Theme();
+        Metadata metadata = new Metadata();
+        metadata.setName("theme-test");
+        theme.setMetadata(metadata);
+        theme.setKind(Theme.KIND);
+        theme.setApiVersion("theme.halo.run/v1alpha1");
+        Theme.ThemeSpec themeSpec = new Theme.ThemeSpec();
+        themeSpec.setSettingName("theme-test-setting");
+        theme.setSpec(themeSpec);
+        return theme;
+    }
+
+    @Test
+    void themeSettingDefaultValue() throws IOException, JSONException {
+        Path testWorkDir = tempDirectory.resolve("reconcile-setting-value");
+        Files.createDirectory(testWorkDir);
+        when(themeRoot.get()).thenReturn(testWorkDir);
+
+        Theme theme = new Theme();
+        Metadata metadata = new Metadata();
+        metadata.setName("theme-test");
+        theme.setMetadata(metadata);
+        theme.setKind(Theme.KIND);
+        theme.setApiVersion("theme.halo.run/v1alpha1");
+        Theme.ThemeSpec themeSpec = new Theme.ThemeSpec();
+        themeSpec.setSettingName(null);
+        theme.setSpec(themeSpec);
+
+        when(extensionClient.fetch(eq(Theme.class), eq(metadata.getName()))).thenReturn(Optional.of(theme));
+        var reconcile = themeReconciler.reconcile(new Reconciler.Request(metadata.getName()));
+        assertThat(reconcile.reEnqueue()).isFalse();
+        verify(extensionClient, times(1)).fetch(eq(Theme.class), eq(metadata.getName()));
+
+        // setting exists
+        themeSpec.setSettingName("theme-test-setting");
+        assertThat(theme.getSpec().getConfigMapName()).isNull();
+        ArgumentCaptor<Theme> captor = ArgumentCaptor.forClass(Theme.class);
+        Assertions.assertThrows(
+                RequeueException.class, () -> themeReconciler.reconcile(new Reconciler.Request(metadata.getName())));
+        verify(extensionClient, times(2)).fetch(eq(Theme.class), eq(metadata.getName()));
+        verify(extensionClient).update(captor.capture());
+        Theme value = captor.getValue();
+        assertThat(value.getSpec().getConfigMapName()).isNotNull();
+
+        // populate setting name and configMap name and configMap not exists
+        themeSpec.setSettingName("theme-test-setting");
+        themeSpec.setConfigMapName("theme-test-configmap");
+        when(extensionClient.fetch(eq(ConfigMap.class), any())).thenReturn(Optional.empty());
+        when(extensionClient.fetch(eq(Setting.class), eq(themeSpec.getSettingName())))
+                .thenReturn(Optional.of(getFakeSetting()));
+        themeReconciler.reconcile(new Reconciler.Request(metadata.getName()));
+        verify(extensionClient, times(2)).fetch(eq(Setting.class), eq(themeSpec.getSettingName()));
+        ArgumentCaptor<ConfigMap> configMapCaptor = ArgumentCaptor.forClass(ConfigMap.class);
+        verify(extensionClient, times(1)).create(any(ConfigMap.class));
+        verify(extensionClient, times(1)).create(configMapCaptor.capture());
+        ConfigMap defaultValueConfigMap = configMapCaptor.getValue();
+        Map<String, String> data = defaultValueConfigMap.getData();
+        JSONAssert.assertEquals("""
+                {
+                    "sns": "{\\"email\\":\\"example@exmple.com\\"}"
+                }
+                """, JsonUtils.objectToJson(data), true);
+    }
+
+    private static Setting getFakeSetting() {
+        String settingJson = """
+            {
+                "apiVersion": "v1alpha1",
+                "kind": "Setting",
+                "metadata": {
+                    "name": "theme-default-setting"
+                },
+                "spec": {
+                    "forms": [{
+                        "formSchema": [
+                            {
+                                "$el": "h1",
+                                "children": "Register"
+                            },
+                            {
+                                "$formkit": "text",
+                                "label": "Email",
+                                "name": "email",
+                                "value": "example@exmple.com"
+                            },
+                            {
+                                "$formkit": "password",
+                                "label": "Password",
+                                "name": "password",
+                                "validation": "required|length:5,16",
+                                "value": null
+                            }
+                        ],
+                        "group": "sns",
+                        "label": "社交资料"
+                    }]
+                }
+            }
+            """;
+        return JsonUtils.jsonToObject(settingJson, Setting.class);
+    }
+}

@@ -1,0 +1,3535 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Halo",
+    "version": "2.26.0-SNAPSHOT"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8091",
+      "description": "Generated server url"
+    }
+  ],
+  "security": [
+    {
+      "basicAuth": [],
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/apis/api.notification.halo.run/v1alpha1/notifiers/{name}/receiver-config": {
+      "get": {
+        "description": "Fetch receiver config of notifier",
+        "operationId": "FetchReceiverConfig",
+        "parameters": [
+          {
+            "description": "Notifier metadata.name",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "NotifierV1alpha1Uc"
+        ]
+      },
+      "post": {
+        "description": "Save receiver config of notifier",
+        "operationId": "SaveReceiverConfig",
+        "parameters": [
+          {
+            "description": "Notifier metadata.name",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "content": {},
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "NotifierV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/api.notification.halo.run/v1alpha1/userspaces/{username}/notification-preferences": {
+      "get": {
+        "description": "List notification preferences for the authenticated user.",
+        "operationId": "ListUserNotificationPreferences",
+        "parameters": [
+          {
+            "description": "User metadata.name",
+            "in": "path",
+            "name": "username",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReasonTypeNotifierMatrix"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "NotificationV1alpha1Uc"
+        ]
+      },
+      "post": {
+        "description": "Save notification preferences for the authenticated user.",
+        "operationId": "SaveUserNotificationPreferences",
+        "parameters": [
+          {
+            "description": "User metadata.name",
+            "in": "path",
+            "name": "username",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonTypeNotifierCollectionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReasonTypeNotifierMatrix"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "NotificationV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/api.notification.halo.run/v1alpha1/userspaces/{username}/notifications": {
+      "get": {
+        "description": "List notifications for the authenticated user.",
+        "operationId": "ListUserNotifications",
+        "parameters": [
+          {
+            "description": "User metadata.name",
+            "in": "path",
+            "name": "username",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Page number. Default is 0.",
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "description": "Size number. Default is 0.",
+            "in": "query",
+            "name": "size",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "description": "Label selector. e.g.: hidden!\u003dtrue",
+            "in": "query",
+            "name": "labelSelector",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "description": "Field selector. e.g.: metadata.name\u003d\u003dhalo",
+            "in": "query",
+            "name": "fieldSelector",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationList"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "NotificationV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/api.notification.halo.run/v1alpha1/userspaces/{username}/notifications/-/mark-specified-as-read": {
+      "put": {
+        "description": "Mark the specified notifications as read.",
+        "operationId": "MarkNotificationsAsRead",
+        "parameters": [
+          {
+            "description": "User metadata.name",
+            "in": "path",
+            "name": "username",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkSpecifiedRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "NotificationV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/api.notification.halo.run/v1alpha1/userspaces/{username}/notifications/{name}": {
+      "delete": {
+        "description": "Delete the specified notification.",
+        "operationId": "DeleteSpecifiedNotification",
+        "parameters": [
+          {
+            "description": "User metadata.name",
+            "in": "path",
+            "name": "username",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Notification metadata.name",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Notification"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "NotificationV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/api.notification.halo.run/v1alpha1/userspaces/{username}/notifications/{name}/mark-as-read": {
+      "put": {
+        "description": "Mark the specified notification as read.",
+        "operationId": "MarkNotificationAsRead",
+        "parameters": [
+          {
+            "description": "User metadata.name",
+            "in": "path",
+            "name": "username",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Notification metadata.name",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Notification"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "NotificationV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.auth.halo.run/v1alpha1/user-connections/{registerId}/disconnect": {
+      "put": {
+        "description": "Disconnect my connection from a third-party platform.",
+        "operationId": "DisconnectMyConnection",
+        "parameters": [
+          {
+            "description": "The registration ID of the third-party platform.",
+            "in": "path",
+            "name": "registerId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserConnection"
+                  }
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "UserConnectionV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.content.halo.run/v1alpha1/posts": {
+      "get": {
+        "description": "List posts owned by the current user with pagination, sorting, keyword, publish phase, and category filters.",
+        "operationId": "ListMyPosts",
+        "parameters": [
+          {
+            "description": "Page number. Default is 0.",
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "description": "Size number. Default is 0.",
+            "in": "query",
+            "name": "size",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "description": "Label selector. e.g.: hidden!\u003dtrue",
+            "in": "query",
+            "name": "labelSelector",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "description": "Field selector. e.g.: metadata.name\u003d\u003dhalo",
+            "in": "query",
+            "name": "fieldSelector",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "description": "Filter posts by publish phase. Supported values follow PostPhase, such as DRAFT, PENDING_APPROVAL, PUBLISHED, or FAILED.",
+            "in": "query",
+            "name": "publishPhase",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "PENDING_APPROVAL",
+                "PUBLISHED",
+                "FAILED"
+              ]
+            }
+          },
+          {
+            "description": "Keyword used to match post title, slug, or excerpt.",
+            "in": "query",
+            "name": "keyword",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Category metadata name used to include posts in that category and its child categories.",
+            "in": "query",
+            "name": "categoryWithChildren",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListedPostList"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "PostV1alpha1Uc"
+        ]
+      },
+      "post": {
+        "description": "Create a draft post for the current user. To create it with initial content, put JSON-serialized Content into metadata.annotations[\u0027content.halo.run/content-json\u0027].",
+        "operationId": "CreateMyPost",
+        "requestBody": {
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/Post"
+              }
+            }
+          },
+          "description": "Post extension to create. The server assigns spec.owner from the current user and consumes the content-json annotation as initial content when present.",
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "PostV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.content.halo.run/v1alpha1/posts/{name}": {
+      "get": {
+        "description": "Get a post owned by the current user by metadata.name.",
+        "operationId": "GetMyPost",
+        "parameters": [
+          {
+            "description": "metadata.name of a post owned by the current user.",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "PostV1alpha1Uc"
+        ]
+      },
+      "put": {
+        "description": "Update post metadata and editable spec fields for the current user. Content is not updated by this operation.",
+        "operationId": "UpdateMyPost",
+        "parameters": [
+          {
+            "description": "metadata.name of a post owned by the current user.",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/Post"
+              }
+            }
+          },
+          "description": "Post extension with updated metadata/spec values. The server preserves owner, publish, snapshot, and deleted state fields, and ignores the content-json annotation here.",
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "PostV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.content.halo.run/v1alpha1/posts/{name}/draft": {
+      "get": {
+        "description": "Get the editable draft snapshot of a post owned by the current user.",
+        "operationId": "GetMyPostDraft",
+        "parameters": [
+          {
+            "description": "metadata.name of a post owned by the current user.",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Whether to return the head snapshot patched against the base snapshot. Defaults to false.",
+            "in": "query",
+            "name": "patched",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Snapshot"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "PostV1alpha1Uc"
+        ]
+      },
+      "put": {
+        "description": "Update the editable draft snapshot of a post owned by the current user. The snapshot must belong to the post and must be the current head snapshot.",
+        "operationId": "UpdateMyPostDraft",
+        "parameters": [
+          {
+            "description": "metadata.name of a post owned by the current user.",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/Snapshot"
+              }
+            }
+          },
+          "description": "Snapshot payload carrying JSON-serialized Content in metadata.annotations[\u0027content.halo.run/content-json\u0027].",
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Snapshot"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "PostV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.content.halo.run/v1alpha1/posts/{name}/publish": {
+      "put": {
+        "description": "Publish a post owned by the current user from its current head snapshot.",
+        "operationId": "PublishMyPost",
+        "parameters": [
+          {
+            "description": "metadata.name of a post owned by the current user.",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "PostV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.content.halo.run/v1alpha1/posts/{name}/recycle": {
+      "delete": {
+        "description": "Move a post owned by the current user to the recycle bin.",
+        "operationId": "RecycleMyPost",
+        "parameters": [
+          {
+            "description": "metadata.name of a post owned by the current user.",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "PostV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.content.halo.run/v1alpha1/posts/{name}/unpublish": {
+      "put": {
+        "description": "Unpublish a post owned by the current user so it is no longer served as published content.",
+        "operationId": "UnpublishMyPost",
+        "parameters": [
+          {
+            "description": "metadata.name of a post owned by the current user.",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "PostV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.content.halo.run/v1alpha1/snapshots/{name}": {
+      "get": {
+        "description": "Get a content snapshot for a post owned by the current user. The snapshot must belong to the post specified by postName.",
+        "operationId": "GetSnapshotForPost",
+        "parameters": [
+          {
+            "description": "metadata.name of the snapshot to fetch.",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "metadata.name of the post that owns the snapshot. The post must belong to the current user.",
+            "in": "query",
+            "name": "postName",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Whether to return the snapshot patched against the post base snapshot. Defaults to false.",
+            "in": "query",
+            "name": "patched",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Snapshot"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "SnapshotV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.halo.run/v1alpha1/annotationsettings": {
+      "get": {
+        "description": "List available AnnotationSettings for the given targetRef. The available AnnotationSettings are determined by the currently activated theme and started plugins.",
+        "operationId": "listAvailableAnnotationSettings",
+        "parameters": [
+          {
+            "description": "The targetRef of the AnnotationSetting. e.g.: \u0027content.halo.run/Post",
+            "in": "query",
+            "name": "targetRef",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AnnotationSetting"
+                  }
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "AnnotationSettingV1AlphaUc"
+        ]
+      }
+    },
+    "/apis/uc.api.halo.run/v1alpha1/user-preferences/{group}": {
+      "get": {
+        "description": "Get my preference by group.",
+        "operationId": "getMyPreference",
+        "parameters": [
+          {
+            "description": "Group of user preference, e.g. `notification`.",
+            "in": "path",
+            "name": "group",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "UserPreferenceV1alpha1Uc"
+        ]
+      },
+      "put": {
+        "description": "Create or update my preference by group.",
+        "operationId": "updateMyPreference",
+        "parameters": [
+          {
+            "description": "Group of user preference, e.g. `notification`.",
+            "in": "path",
+            "name": "group",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "*/*": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No content, preference updated successfully."
+          }
+        },
+        "tags": [
+          "UserPreferenceV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.halo.run/v1alpha1/users/-": {
+      "get": {
+        "description": "Get current user profile without password hash.",
+        "operationId": "GetMyUser",
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/UcUserVo"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "UserV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.halo.run/v1alpha1/users/-/password": {
+      "put": {
+        "description": "Set or change the password of the current user.",
+        "operationId": "ChangeMyPassword",
+        "requestBody": {
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeMyPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/UcUserVo"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "UserV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.security.halo.run/v1alpha1/authentications/two-factor/settings": {
+      "get": {
+        "description": "Get Two-factor authentication settings.",
+        "operationId": "GetTwoFactorAuthenticationSettings",
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TwoFactorAuthSettings"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "TwoFactorAuthV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.security.halo.run/v1alpha1/authentications/two-factor/settings/disabled": {
+      "put": {
+        "description": "Disable Two-factor authentication",
+        "operationId": "DisableTwoFactor",
+        "requestBody": {
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TwoFactorAuthSettings"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "TwoFactorAuthV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.security.halo.run/v1alpha1/authentications/two-factor/settings/enabled": {
+      "put": {
+        "description": "Enable Two-factor authentication",
+        "operationId": "EnableTwoFactor",
+        "requestBody": {
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TwoFactorAuthSettings"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "TwoFactorAuthV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.security.halo.run/v1alpha1/authentications/two-factor/totp": {
+      "post": {
+        "description": "Configure a TOTP",
+        "operationId": "ConfigurerTotp",
+        "requestBody": {
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TwoFactorAuthSettings"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "TwoFactorAuthV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.security.halo.run/v1alpha1/authentications/two-factor/totp/-": {
+      "delete": {
+        "description": "Delete the current user\u0027s configured TOTP authenticator after password verification.",
+        "operationId": "DeleteTotp",
+        "requestBody": {
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TwoFactorAuthSettings"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "TwoFactorAuthV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.security.halo.run/v1alpha1/authentications/two-factor/totp/auth-link": {
+      "get": {
+        "description": "Get TOTP auth link, including secret",
+        "operationId": "GetTotpAuthLink",
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpAuthLinkResponse"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "TwoFactorAuthV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.security.halo.run/v1alpha1/devices": {
+      "get": {
+        "description": "List all user devices",
+        "operationId": "ListDevices",
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserDevice"
+                  }
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "DeviceV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.security.halo.run/v1alpha1/devices/{deviceId}": {
+      "delete": {
+        "description": "Revoke a own device",
+        "operationId": "RevokeDevice",
+        "parameters": [
+          {
+            "description": "Device ID",
+            "in": "path",
+            "name": "deviceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204 NO_CONTENT": {
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "DeviceV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.security.halo.run/v1alpha1/personalaccesstokens": {
+      "get": {
+        "description": "Obtain PAT list.",
+        "operationId": "ObtainPats",
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PersonalAccessToken"
+                  }
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "PersonalAccessTokenV1alpha1Uc"
+        ]
+      },
+      "post": {
+        "description": "Generate a PAT.",
+        "operationId": "GeneratePat",
+        "requestBody": {
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonalAccessToken"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalAccessToken"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "PersonalAccessTokenV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.security.halo.run/v1alpha1/personalaccesstokens/{name}": {
+      "delete": {
+        "description": "Delete a PAT",
+        "operationId": "DeletePat",
+        "parameters": [
+          {
+            "description": "metadata.name of the PAT to delete.",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalAccessToken"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "PersonalAccessTokenV1alpha1Uc"
+        ]
+      },
+      "get": {
+        "description": "Obtain a PAT.",
+        "operationId": "ObtainPat",
+        "parameters": [
+          {
+            "description": "metadata.name of the PAT to fetch.",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalAccessToken"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "PersonalAccessTokenV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.security.halo.run/v1alpha1/personalaccesstokens/{name}/actions/restoration": {
+      "put": {
+        "description": "Restore a PAT.",
+        "operationId": "RestorePat",
+        "parameters": [
+          {
+            "description": "metadata.name of the PAT to restore.",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalAccessToken"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "PersonalAccessTokenV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.security.halo.run/v1alpha1/personalaccesstokens/{name}/actions/revocation": {
+      "put": {
+        "description": "Revoke a PAT",
+        "operationId": "RevokePat",
+        "parameters": [
+          {
+            "description": "metadata.name of the PAT to revoke.",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalAccessToken"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "PersonalAccessTokenV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.storage.halo.run/v1alpha1/attachments": {
+      "get": {
+        "description": "List attachments of the current user uploaded.",
+        "operationId": "ListMyAttachments",
+        "parameters": [
+          {
+            "description": "Page number. Default is 0.",
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "description": "Size number. Default is 0.",
+            "in": "query",
+            "name": "size",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "description": "Label selector. e.g.: hidden!\u003dtrue",
+            "in": "query",
+            "name": "labelSelector",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "description": "Field selector. e.g.: metadata.name\u003d\u003dhalo",
+            "in": "query",
+            "name": "fieldSelector",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "description": "Filter attachments without group. This parameter will ignore group parameter.",
+            "in": "query",
+            "name": "ungrouped",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Keyword for searching.",
+            "in": "query",
+            "name": "keyword",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Acceptable media types.",
+            "in": "query",
+            "name": "accepts",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentList"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "AttachmentV1alpha1Uc"
+        ]
+      },
+      "post": {
+        "deprecated": true,
+        "description": "Create attachment for the given post. Deprecated in favor of /attachments/-/upload.",
+        "operationId": "CreateAttachmentForPost",
+        "parameters": [
+          {
+            "description": "Wait for permalink.",
+            "in": "query",
+            "name": "waitForPermalink",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/PostAttachmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Attachment"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "AttachmentV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.storage.halo.run/v1alpha1/attachments/-/match-permalinks": {
+      "post": {
+        "description": "Match URL strings against Attachment permalinks for user center.",
+        "operationId": "MatchAttachmentPermalinksForUc",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachmentPermalinkMatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentPermalinkMatchList"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "AttachmentV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.storage.halo.run/v1alpha1/attachments/-/upload": {
+      "post": {
+        "description": "Upload attachment to user center storage.",
+        "operationId": "UploadAttachmentForUc",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadForm"
+              }
+            }
+          }
+        },
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Attachment"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "AttachmentV1alpha1Uc"
+        ]
+      }
+    },
+    "/apis/uc.api.storage.halo.run/v1alpha1/attachments/-/upload-from-url": {
+      "post": {
+        "deprecated": true,
+        "description": "Upload attachment from the given URL.\nDeprecated in favor of /attachments/-/upload.",
+        "operationId": "ExternalTransferAttachment_1",
+        "parameters": [
+          {
+            "description": "Wait for permalink.",
+            "in": "query",
+            "name": "waitForPermalink",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UcUploadFromUrlRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Attachment"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "tags": [
+          "AttachmentV1alpha1Uc"
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AddOperation": {
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "op": {
+            "type": "string",
+            "enum": [
+              "add"
+            ]
+          },
+          "path": {
+            "pattern": "^(/[^/~]*(~[01][^/~]*)*)*$",
+            "type": "string",
+            "description": "A JSON Pointer path pointing to the location to move/copy from.",
+            "example": "/a/b/c"
+          },
+          "value": {
+            "description": "Value can be any JSON value"
+          }
+        }
+      },
+      "AnnotationSetting": {
+        "required": [
+          "apiVersion",
+          "kind",
+          "metadata",
+          "spec"
+        ],
+        "type": "object",
+        "properties": {
+          "apiVersion": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/Metadata"
+          },
+          "spec": {
+            "$ref": "#/components/schemas/AnnotationSettingSpec"
+          }
+        },
+        "description": "Annotation setting extension that defines dynamic annotation forms for a target extension kind."
+      },
+      "AnnotationSettingSpec": {
+        "required": [
+          "formSchema",
+          "targetRef"
+        ],
+        "type": "object",
+        "properties": {
+          "formSchema": {
+            "minLength": 1,
+            "type": "array",
+            "description": "FormKit-compatible schema used to render annotation fields.",
+            "items": {
+              "minLength": 1,
+              "type": "object"
+            }
+          },
+          "targetRef": {
+            "$ref": "#/components/schemas/GroupKind"
+          }
+        },
+        "description": "Desired annotation form configuration for a target resource kind."
+      },
+      "Attachment": {
+        "required": [
+          "apiVersion",
+          "kind",
+          "metadata",
+          "spec"
+        ],
+        "type": "object",
+        "properties": {
+          "apiVersion": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/Metadata"
+          },
+          "spec": {
+            "$ref": "#/components/schemas/AttachmentSpec"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AttachmentStatus"
+          }
+        },
+        "description": "Attachment extension that describes an uploaded file and its resolved access URLs."
+      },
+      "AttachmentList": {
+        "required": [
+          "first",
+          "hasNext",
+          "hasPrevious",
+          "items",
+          "last",
+          "page",
+          "size",
+          "total",
+          "totalPages"
+        ],
+        "type": "object",
+        "properties": {
+          "first": {
+            "type": "boolean",
+            "description": "Indicates whether current page is the first page."
+          },
+          "hasNext": {
+            "type": "boolean",
+            "description": "Indicates whether current page has next page."
+          },
+          "hasPrevious": {
+            "type": "boolean",
+            "description": "Indicates whether current page has previous page."
+          },
+          "items": {
+            "type": "array",
+            "description": "A chunk of items.",
+            "items": {
+              "$ref": "#/components/schemas/Attachment"
+            }
+          },
+          "last": {
+            "type": "boolean",
+            "description": "Indicates whether current page is the last page."
+          },
+          "page": {
+            "type": "integer",
+            "description": "Page number, starts from 1. If not set or equal to 0, it means no pagination.",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "description": "Size of each page. If not set or equal to 0, it means no pagination.",
+            "format": "int32"
+          },
+          "total": {
+            "type": "integer",
+            "description": "Total elements.",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "description": "Indicates total pages.",
+            "format": "int64"
+          }
+        }
+      },
+      "AttachmentPermalinkMatchList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttachmentPermalinkMatchResult"
+            }
+          }
+        },
+        "description": "Ordered Attachment permalink match results."
+      },
+      "AttachmentPermalinkMatchRequest": {
+        "required": [
+          "urls"
+        ],
+        "type": "object",
+        "properties": {
+          "urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "Request payload for matching URL strings against Attachment permalinks."
+      },
+      "AttachmentPermalinkMatchResult": {
+        "type": "object",
+        "properties": {
+          "matched": {
+            "type": "boolean"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "description": "Result for one Attachment permalink match input."
+      },
+      "AttachmentSpec": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "description": "Display name shown for the attachment."
+          },
+          "groupName": {
+            "type": "string",
+            "description": "Attachment group metadata.name this attachment belongs to."
+          },
+          "mediaType": {
+            "type": "string",
+            "description": "Media type detected or supplied for the attachment, such as image/png."
+          },
+          "ownerName": {
+            "type": "string",
+            "description": "User metadata.name of the uploader."
+          },
+          "policyName": {
+            "type": "string",
+            "description": "Storage policy metadata.name used to store this attachment."
+          },
+          "size": {
+            "minimum": 0,
+            "type": "integer",
+            "description": "Size of the attachment in bytes.",
+            "format": "int64"
+          },
+          "tags": {
+            "uniqueItems": true,
+            "type": "array",
+            "description": "Free-form tags assigned to the attachment.",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "Desired attachment metadata and storage placement."
+      },
+      "AttachmentStatus": {
+        "type": "object",
+        "properties": {
+          "permalink": {
+            "type": "string",
+            "description": "Public permalink for the attachment. Local storage usually exposes a public URL, while object storage may\n expose the object URL."
+          },
+          "thumbnails": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Generated thumbnail URLs keyed by thumbnail size name."
+          }
+        },
+        "description": "Observed attachment access state."
+      },
+      "Category": {
+        "required": [
+          "apiVersion",
+          "kind",
+          "metadata",
+          "spec"
+        ],
+        "type": "object",
+        "properties": {
+          "apiVersion": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/Metadata"
+          },
+          "spec": {
+            "$ref": "#/components/schemas/CategorySpec"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CategoryStatus"
+          }
+        },
+        "description": "Category extension for grouping posts and building category archives."
+      },
+      "CategorySpec": {
+        "required": [
+          "displayName",
+          "priority",
+          "slug"
+        ],
+        "type": "object",
+        "properties": {
+          "children": {
+            "type": "array",
+            "description": "Legacy child Category metadata.name values. Category hierarchy is now sourced from Category.spec.parent.",
+            "deprecated": true,
+            "items": {
+              "type": "string",
+              "description": "Legacy child Category metadata.name values. Category hierarchy is now sourced from Category.spec.parent.",
+              "deprecated": true
+            }
+          },
+          "cover": {
+            "type": "string",
+            "description": "Cover image URL or attachment URI of the category."
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of the category."
+          },
+          "displayName": {
+            "minLength": 1,
+            "type": "string",
+            "description": "Display name of the category."
+          },
+          "hideFromList": {
+            "type": "boolean",
+            "description": "Hides this root category tree and its posts from theme-side lists. Permalinks remain accessible, and only\n root categories are expected to set this flag."
+          },
+          "parent": {
+            "type": "string",
+            "description": "Parent Category metadata.name. Root categories leave this unset."
+          },
+          "postTemplate": {
+            "maxLength": 255,
+            "type": "string",
+            "description": "Theme template used for posts in this category when the post does not specify its own spec.template."
+          },
+          "preventParentPostCascadeQuery": {
+            "type": "boolean",
+            "description": "Stops parent category post queries from cascading into this category tree. Direct post queries for this\n category are unaffected."
+          },
+          "priority": {
+            "type": "integer",
+            "description": "Sorting priority. Higher values sort before lower values where priority ordering is applied.",
+            "format": "int32",
+            "default": 0
+          },
+          "slug": {
+            "minLength": 1,
+            "type": "string",
+            "description": "URL slug used to build the category permalink."
+          },
+          "template": {
+            "maxLength": 255,
+            "type": "string",
+            "description": "Theme template used to render the category archive page."
+          }
+        },
+        "description": "Desired category display, hierarchy, and rendering configuration."
+      },
+      "CategoryStatus": {
+        "type": "object",
+        "properties": {
+          "permalink": {
+            "type": "string",
+            "description": "Absolute permalink calculated from the category permalink policy."
+          },
+          "postCount": {
+            "type": "integer",
+            "description": "Total number of posts in this category and all descendant categories.",
+            "format": "int32"
+          },
+          "visiblePostCount": {
+            "type": "integer",
+            "description": "Total number of published and public posts in this category and all descendant categories.",
+            "format": "int32"
+          }
+        },
+        "description": "Observed category state derived by content reconcilers."
+      },
+      "ChangeMyPasswordRequest": {
+        "required": [
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "oldPassword": {
+            "type": "string",
+            "description": "Old password. Required and verified only when the current user has a password; ignored otherwise."
+          },
+          "password": {
+            "maxLength": 257,
+            "minLength": 5,
+            "type": "string",
+            "description": "new password of the current user"
+          }
+        },
+        "description": "Payload for setting or changing the current user\u0027s password."
+      },
+      "Condition": {
+        "required": [
+          "lastTransitionTime",
+          "status",
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "lastTransitionTime": {
+            "type": "string",
+            "description": "Last time the condition transitioned from one status to another.",
+            "format": "date-time"
+          },
+          "message": {
+            "maxLength": 32768,
+            "type": "string",
+            "description": "Human-readable message indicating details about last transition. This may be an empty string."
+          },
+          "reason": {
+            "maxLength": 1024,
+            "pattern": "^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$",
+            "type": "string",
+            "description": "Unique, one-word, CamelCase reason for the condition\u0027s last transition."
+          },
+          "status": {
+            "type": "string",
+            "description": "Status is the status of the condition. Can be True, False, Unknown.",
+            "enum": [
+              "TRUE",
+              "FALSE",
+              "UNKNOWN"
+            ]
+          },
+          "type": {
+            "maxLength": 316,
+            "pattern": "^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$",
+            "type": "string",
+            "description": "type of condition in CamelCase or in foo.example.com/CamelCase. example: Ready, Initialized. maxLength: 316."
+          }
+        },
+        "description": "EqualsAndHashCode 排除了lastTransitionTime否则失败时，lastTransitionTime 会被更新 导致 equals 为 false，一直被加入队列."
+      },
+      "Contributor": {
+        "type": "object",
+        "properties": {
+          "avatar": {
+            "type": "string",
+            "description": "User avatar URL."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "User display name."
+          },
+          "name": {
+            "type": "string",
+            "description": "User metadata name."
+          }
+        },
+        "description": "User summary for a content owner or contributor."
+      },
+      "CopyOperation": {
+        "required": [
+          "from",
+          "op",
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "pattern": "^(/[^/~]*(~[01][^/~]*)*)*$",
+            "type": "string",
+            "description": "A JSON Pointer path pointing to the location to move/copy from.",
+            "example": "/a/b/c"
+          },
+          "op": {
+            "type": "string",
+            "enum": [
+              "copy"
+            ]
+          },
+          "path": {
+            "pattern": "^(/[^/~]*(~[01][^/~]*)*)*$",
+            "type": "string",
+            "description": "A JSON Pointer path pointing to the location to move/copy from.",
+            "example": "/a/b/c"
+          }
+        }
+      },
+      "Device": {
+        "required": [
+          "apiVersion",
+          "kind",
+          "metadata",
+          "spec",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "apiVersion": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/Metadata"
+          },
+          "spec": {
+            "$ref": "#/components/schemas/DeviceSpec"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeviceStatus"
+          }
+        },
+        "description": "Device extension that records an authenticated browser session for account security visibility."
+      },
+      "DeviceSpec": {
+        "required": [
+          "ipAddress",
+          "principalName",
+          "sessionId"
+        ],
+        "type": "object",
+        "properties": {
+          "ipAddress": {
+            "maxLength": 129,
+            "type": "string",
+            "description": "Client IP address observed for the session."
+          },
+          "lastAccessedTime": {
+            "type": "string",
+            "description": "Last time this session accessed Halo.",
+            "format": "date-time"
+          },
+          "lastAuthenticatedTime": {
+            "type": "string",
+            "description": "Last time the user authenticated for this session.",
+            "format": "date-time"
+          },
+          "principalName": {
+            "minLength": 1,
+            "type": "string",
+            "description": "Principal name of the authenticated user."
+          },
+          "rememberMeSeriesId": {
+            "type": "string",
+            "description": "Remember-me series id associated with the session, if any."
+          },
+          "sessionId": {
+            "minLength": 1,
+            "type": "string",
+            "description": "Web session identifier associated with the device."
+          },
+          "userAgent": {
+            "maxLength": 500,
+            "type": "string",
+            "description": "Client user-agent header captured for the session."
+          }
+        },
+        "description": "Session identity and request metadata captured for a device."
+      },
+      "DeviceStatus": {
+        "type": "object",
+        "properties": {
+          "browser": {
+            "type": "string",
+            "description": "Browser name parsed from the user agent."
+          },
+          "os": {
+            "type": "string",
+            "description": "Operating system name parsed from the user agent."
+          }
+        },
+        "description": "Parsed browser and operating system details for display."
+      },
+      "Excerpt": {
+        "required": [
+          "autoGenerate"
+        ],
+        "type": "object",
+        "properties": {
+          "autoGenerate": {
+            "type": "boolean",
+            "description": "Whether Halo should generate the excerpt from the released content automatically.",
+            "default": true
+          },
+          "raw": {
+            "type": "string",
+            "description": "Manual excerpt text used when autoGenerate is false."
+          }
+        },
+        "description": "Excerpt generation configuration for a post or single page."
+      },
+      "GroupKind": {
+        "type": "object",
+        "properties": {
+          "group": {
+            "type": "string",
+            "description": "is group name of Extension."
+          },
+          "kind": {
+            "type": "string",
+            "description": "is kind name of Extension."
+          }
+        },
+        "description": "GroupKind contains group and kind data only."
+      },
+      "JsonPatch": {
+        "minItems": 1,
+        "uniqueItems": true,
+        "type": "array",
+        "description": "JSON schema for JSONPatch operations",
+        "items": {
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/AddOperation"
+            },
+            {
+              "$ref": "#/components/schemas/ReplaceOperation"
+            },
+            {
+              "$ref": "#/components/schemas/TestOperation"
+            },
+            {
+              "$ref": "#/components/schemas/RemoveOperation"
+            },
+            {
+              "$ref": "#/components/schemas/MoveOperation"
+            },
+            {
+              "$ref": "#/components/schemas/CopyOperation"
+            }
+          ]
+        }
+      },
+      "ListedPost": {
+        "required": [
+          "categories",
+          "contributors",
+          "owner",
+          "post",
+          "stats",
+          "tags"
+        ],
+        "type": "object",
+        "properties": {
+          "categories": {
+            "type": "array",
+            "description": "Resolved categories referenced by the post spec.",
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            }
+          },
+          "contributors": {
+            "type": "array",
+            "description": "Users that have contributed to the post content snapshots.",
+            "items": {
+              "$ref": "#/components/schemas/Contributor"
+            }
+          },
+          "owner": {
+            "$ref": "#/components/schemas/Contributor"
+          },
+          "post": {
+            "$ref": "#/components/schemas/Post"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/Stats"
+          },
+          "tags": {
+            "type": "array",
+            "description": "Resolved tags referenced by the post spec.",
+            "items": {
+              "$ref": "#/components/schemas/Tag"
+            }
+          }
+        },
+        "description": "Post list item with resolved categories, tags, contributors, owner, and counters."
+      },
+      "ListedPostList": {
+        "required": [
+          "first",
+          "hasNext",
+          "hasPrevious",
+          "items",
+          "last",
+          "page",
+          "size",
+          "total",
+          "totalPages"
+        ],
+        "type": "object",
+        "properties": {
+          "first": {
+            "type": "boolean",
+            "description": "Indicates whether current page is the first page."
+          },
+          "hasNext": {
+            "type": "boolean",
+            "description": "Indicates whether current page has next page."
+          },
+          "hasPrevious": {
+            "type": "boolean",
+            "description": "Indicates whether current page has previous page."
+          },
+          "items": {
+            "type": "array",
+            "description": "A chunk of items.",
+            "items": {
+              "$ref": "#/components/schemas/ListedPost"
+            }
+          },
+          "last": {
+            "type": "boolean",
+            "description": "Indicates whether current page is the last page."
+          },
+          "page": {
+            "type": "integer",
+            "description": "Page number, starts from 1. If not set or equal to 0, it means no pagination.",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "description": "Size of each page. If not set or equal to 0, it means no pagination.",
+            "format": "int32"
+          },
+          "total": {
+            "type": "integer",
+            "description": "Total elements.",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "description": "Indicates total pages.",
+            "format": "int64"
+          }
+        }
+      },
+      "MarkSpecifiedRequest": {
+        "required": [
+          "names"
+        ],
+        "type": "object",
+        "properties": {
+          "names": {
+            "type": "array",
+            "description": "notification \u003ccode\u003emetadata.name\u003c/code\u003e values to mark as read",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "Payload for marking multiple notifications as read."
+      },
+      "Metadata": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "annotations": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Annotations are like key-value format."
+          },
+          "creationTimestamp": {
+            "type": "string",
+            "description": "Creation timestamp of the Extension.",
+            "format": "date-time",
+            "nullable": true
+          },
+          "deletionTimestamp": {
+            "type": "string",
+            "description": "Deletion timestamp of the Extension.",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finalizers": {
+            "uniqueItems": true,
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string",
+              "nullable": true
+            }
+          },
+          "generateName": {
+            "type": "string",
+            "description": "The name field will be generated automatically according to the given generateName field"
+          },
+          "labels": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Labels are like key-value format."
+          },
+          "name": {
+            "type": "string",
+            "description": "Metadata name"
+          },
+          "version": {
+            "type": "integer",
+            "description": "Current version of the Extension. It will be bumped up every update.",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "description": "Metadata of Extension."
+      },
+      "MoveOperation": {
+        "required": [
+          "from",
+          "op",
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "pattern": "^(/[^/~]*(~[01][^/~]*)*)*$",
+            "type": "string",
+            "description": "A JSON Pointer path pointing to the location to move/copy from.",
+            "example": "/a/b/c"
+          },
+          "op": {
+            "type": "string",
+            "enum": [
+              "move"
+            ]
+          },
+          "path": {
+            "pattern": "^(/[^/~]*(~[01][^/~]*)*)*$",
+            "type": "string",
+            "description": "A JSON Pointer path pointing to the location to move/copy from.",
+            "example": "/a/b/c"
+          }
+        }
+      },
+      "Notification": {
+        "required": [
+          "apiVersion",
+          "kind",
+          "metadata"
+        ],
+        "type": "object",
+        "properties": {
+          "apiVersion": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/Metadata"
+          },
+          "spec": {
+            "$ref": "#/components/schemas/NotificationSpec"
+          }
+        },
+        "description": "Notification extension that stores an on-site notification delivered to a Halo user.\n\n \u003cp\u003eSupports the following operations:\n\n \u003cul\u003e\n   \u003cli\u003eMarked as read: {@link NotificationSpec#setUnread(boolean) NotificationSpec#setUnread(boolean)}\n   \u003cli\u003eGet the last read time: {@link NotificationSpec#getLastReadAt NotificationSpec#getLastReadAt()}\n   \u003cli\u003eFilter by recipient: {@link NotificationSpec#getRecipient NotificationSpec#getRecipient()}\n \u003c/ul\u003e"
+      },
+      "NotificationList": {
+        "required": [
+          "first",
+          "hasNext",
+          "hasPrevious",
+          "items",
+          "last",
+          "page",
+          "size",
+          "total",
+          "totalPages"
+        ],
+        "type": "object",
+        "properties": {
+          "first": {
+            "type": "boolean",
+            "description": "Indicates whether current page is the first page."
+          },
+          "hasNext": {
+            "type": "boolean",
+            "description": "Indicates whether current page has next page."
+          },
+          "hasPrevious": {
+            "type": "boolean",
+            "description": "Indicates whether current page has previous page."
+          },
+          "items": {
+            "type": "array",
+            "description": "A chunk of items.",
+            "items": {
+              "$ref": "#/components/schemas/Notification"
+            }
+          },
+          "last": {
+            "type": "boolean",
+            "description": "Indicates whether current page is the last page."
+          },
+          "page": {
+            "type": "integer",
+            "description": "Page number, starts from 1. If not set or equal to 0, it means no pagination.",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "description": "Size of each page. If not set or equal to 0, it means no pagination.",
+            "format": "int32"
+          },
+          "total": {
+            "type": "integer",
+            "description": "Total elements.",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "description": "Indicates total pages.",
+            "format": "int64"
+          }
+        }
+      },
+      "NotificationSpec": {
+        "required": [
+          "htmlContent",
+          "rawContent",
+          "reason",
+          "recipient",
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "htmlContent": {
+            "type": "string",
+            "description": "HTML notification content."
+          },
+          "lastReadAt": {
+            "type": "string",
+            "description": "Last time the recipient marked this notification as read.",
+            "format": "date-time"
+          },
+          "rawContent": {
+            "type": "string",
+            "description": "Plain text or source notification content."
+          },
+          "reason": {
+            "minLength": 1,
+            "type": "string",
+            "description": "Reason metadata.name that generated this notification."
+          },
+          "recipient": {
+            "minLength": 1,
+            "type": "string",
+            "description": "User metadata.name that receives the notification."
+          },
+          "title": {
+            "minLength": 1,
+            "type": "string",
+            "description": "Notification title shown in the notification center."
+          },
+          "unread": {
+            "type": "boolean",
+            "description": "Whether the recipient has not read the notification yet."
+          }
+        },
+        "description": "Notification content and read state for one recipient."
+      },
+      "NotifierInfo": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "description of the notifier"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "display name of the notifier"
+          },
+          "name": {
+            "type": "string",
+            "description": "notifier \u003ccode\u003emetadata.name\u003c/code\u003e"
+          }
+        },
+        "description": "Notifier metadata used by notification preference UI."
+      },
+      "PasswordRequest": {
+        "required": [
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "password": {
+            "minLength": 1,
+            "type": "string",
+            "description": "Current password of the authenticated user."
+          },
+          "totpCode": {
+            "type": "string",
+            "description": "Current TOTP code, required when TOTP has already been configured."
+          }
+        },
+        "description": "Password verification payload for changing two-factor authentication settings."
+      },
+      "PatSpec": {
+        "required": [
+          "name",
+          "tokenId",
+          "username"
+        ],
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Optional human-readable description of how the token is used."
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "Time when the token expires. A null value means the token does not expire by time.",
+            "format": "date-time"
+          },
+          "lastUsed": {
+            "type": "string",
+            "description": "Last time the token was used successfully.",
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name chosen by the token owner."
+          },
+          "revoked": {
+            "type": "boolean",
+            "description": "Whether the token has been manually revoked."
+          },
+          "revokesAt": {
+            "type": "string",
+            "description": "Time when the token was revoked.",
+            "format": "date-time"
+          },
+          "roles": {
+            "type": "array",
+            "description": "Role names granted to this token.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scopes": {
+            "type": "array",
+            "description": "Scope strings granted to this token.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tokenId": {
+            "type": "string",
+            "description": "Stable token identifier stored separately from the secret token value."
+          },
+          "username": {
+            "type": "string",
+            "description": "User metadata.name that owns this token."
+          }
+        },
+        "description": "Desired personal access token settings and lifecycle flags."
+      },
+      "PersonalAccessToken": {
+        "required": [
+          "apiVersion",
+          "kind",
+          "metadata"
+        ],
+        "type": "object",
+        "properties": {
+          "apiVersion": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/Metadata"
+          },
+          "spec": {
+            "$ref": "#/components/schemas/PatSpec"
+          }
+        },
+        "description": "Personal access token extension used for non-interactive API authentication on behalf of a Halo user."
+      },
+      "Post": {
+        "required": [
+          "apiVersion",
+          "kind",
+          "metadata",
+          "spec"
+        ],
+        "type": "object",
+        "properties": {
+          "apiVersion": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/Metadata"
+          },
+          "spec": {
+            "$ref": "#/components/schemas/PostSpec"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PostStatus"
+          }
+        },
+        "description": "Post extension that stores article metadata, publication settings, taxonomy, and derived status."
+      },
+      "PostAttachmentRequest": {
+        "required": [
+          "file"
+        ],
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "attachment data",
+            "format": "binary"
+          },
+          "postName": {
+            "type": "string",
+            "description": "post \u003ccode\u003emetadata.name\u003c/code\u003e"
+          },
+          "singlePageName": {
+            "type": "string",
+            "description": "single page \u003ccode\u003emetadata.name\u003c/code\u003e"
+          }
+        },
+        "description": "Multipart payload for uploading a post attachment."
+      },
+      "PostSpec": {
+        "required": [
+          "allowComment",
+          "deleted",
+          "excerpt",
+          "pinned",
+          "priority",
+          "publish",
+          "slug",
+          "title",
+          "visible"
+        ],
+        "type": "object",
+        "properties": {
+          "allowComment": {
+            "type": "boolean",
+            "description": "Whether new comments are allowed for this post.",
+            "default": true
+          },
+          "baseSnapshot": {
+            "type": "string",
+            "description": "Base Snapshot metadata.name used to reconstruct raw and rendered content from patches."
+          },
+          "categories": {
+            "type": "array",
+            "description": "Category metadata.name values associated with the post.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "cover": {
+            "type": "string",
+            "description": "Cover image URL or attachment URI of the post."
+          },
+          "deleted": {
+            "type": "boolean",
+            "description": "Whether the post is logically deleted and should be treated as recycled.",
+            "default": false
+          },
+          "excerpt": {
+            "$ref": "#/components/schemas/Excerpt"
+          },
+          "headSnapshot": {
+            "type": "string",
+            "description": "Snapshot metadata.name containing the latest editable draft content."
+          },
+          "htmlMetas": {
+            "type": "array",
+            "description": "HTML meta tag attribute maps injected into the rendered post page head.",
+            "items": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "owner": {
+            "type": "string",
+            "description": "User metadata.name of the post owner."
+          },
+          "pinned": {
+            "type": "boolean",
+            "description": "Whether the post should be pinned ahead of normal post ordering.",
+            "default": false
+          },
+          "priority": {
+            "type": "integer",
+            "description": "Sorting priority. Higher values sort before lower values where priority ordering is applied.",
+            "format": "int32",
+            "default": 0
+          },
+          "publish": {
+            "type": "boolean",
+            "description": "Desired publish state. False keeps the post as a draft or moves it back to draft.",
+            "default": false
+          },
+          "publishTime": {
+            "type": "string",
+            "description": "Time when the post was published or is scheduled to be published.",
+            "format": "date-time"
+          },
+          "releaseSnapshot": {
+            "type": "string",
+            "description": "Snapshot metadata.name selected as the published content version."
+          },
+          "slug": {
+            "minLength": 1,
+            "type": "string",
+            "description": "URL slug used to build the post permalink."
+          },
+          "tags": {
+            "type": "array",
+            "description": "Tag metadata.name values associated with the post.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "template": {
+            "type": "string",
+            "description": "Theme template used to render this post."
+          },
+          "title": {
+            "minLength": 1,
+            "type": "string",
+            "description": "Display title of the post."
+          },
+          "visible": {
+            "type": "string",
+            "description": "Visibility used by theme-side and public REST queries; anonymous clients only receive PUBLIC posts.",
+            "enum": [
+              "PUBLIC",
+              "INTERNAL",
+              "PRIVATE"
+            ]
+          }
+        },
+        "description": "Desired post content, publication, taxonomy, and rendering configuration."
+      },
+      "PostStatus": {
+        "type": "object",
+        "properties": {
+          "commentsCount": {
+            "type": "integer",
+            "description": "Total number of comments associated with the content item.",
+            "format": "int32"
+          },
+          "conditions": {
+            "type": "array",
+            "properties": {
+              "empty": {
+                "type": "boolean"
+              }
+            },
+            "description": "Reconciliation conditions reported by controllers for this content item.",
+            "items": {
+              "$ref": "#/components/schemas/Condition"
+            }
+          },
+          "contributors": {
+            "type": "array",
+            "description": "User metadata.name values that contributed to the content snapshots.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "excerpt": {
+            "type": "string",
+            "description": "Excerpt text resolved from the content excerpt configuration."
+          },
+          "hideFromList": {
+            "type": "boolean",
+            "description": "Whether any associated category hides this content item from theme-side lists."
+          },
+          "inProgress": {
+            "type": "boolean",
+            "description": "Whether the latest draft snapshot differs from the released snapshot."
+          },
+          "lastModifyTime": {
+            "type": "string",
+            "description": "Last modification time of the released snapshot.",
+            "format": "date-time"
+          },
+          "observedVersion": {
+            "type": "integer",
+            "description": "Metadata version observed by the last successful reconciliation.",
+            "format": "int64"
+          },
+          "permalink": {
+            "type": "string",
+            "description": "Absolute permalink calculated from the content permalink policy."
+          },
+          "phase": {
+            "type": "string",
+            "description": "Current publishing phase, such as DRAFT, PENDING_APPROVAL, PUBLISHED, or FAILED."
+          }
+        },
+        "description": "Observed post state derived by content reconcilers."
+      },
+      "ReasonTypeInfo": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "description of the reason type"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "display name of the reason type"
+          },
+          "name": {
+            "type": "string",
+            "description": "reason type \u003ccode\u003emetadata.name\u003c/code\u003e"
+          },
+          "uiPermissions": {
+            "uniqueItems": true,
+            "type": "array",
+            "description": "UI permissions required to manage this reason type",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "Reason type metadata used by notification preference UI."
+      },
+      "ReasonTypeNotifierCollectionRequest": {
+        "required": [
+          "reasonTypeNotifiers"
+        ],
+        "type": "object",
+        "properties": {
+          "reasonTypeNotifiers": {
+            "type": "array",
+            "description": "notifier selections grouped by reason type",
+            "items": {
+              "$ref": "#/components/schemas/ReasonTypeNotifierRequest"
+            }
+          }
+        },
+        "description": "Payload for saving notifier selections by reason type."
+      },
+      "ReasonTypeNotifierMatrix": {
+        "required": [
+          "notifiers",
+          "reasonTypes",
+          "stateMatrix"
+        ],
+        "type": "object",
+        "properties": {
+          "notifiers": {
+            "type": "array",
+            "description": "Notification notifiers available to the user.",
+            "items": {
+              "$ref": "#/components/schemas/NotifierInfo"
+            }
+          },
+          "reasonTypes": {
+            "type": "array",
+            "description": "Reason types available to the user.",
+            "items": {
+              "$ref": "#/components/schemas/ReasonTypeInfo"
+            }
+          },
+          "stateMatrix": {
+            "type": "array",
+            "description": "Enabled-state matrix indexed by reason type and notifier.",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "description": "Matrix describing which notifiers are enabled for each reason type."
+      },
+      "ReasonTypeNotifierRequest": {
+        "required": [
+          "notifiers",
+          "reasonType"
+        ],
+        "type": "object",
+        "properties": {
+          "notifiers": {
+            "type": "array",
+            "description": "\u003ccode\u003emetadata.name\u003c/code\u003e values of enabled notifiers.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reasonType": {
+            "type": "string",
+            "description": "\u003ccode\u003emetadata.name\u003c/code\u003e of the reason type."
+          }
+        },
+        "description": "Notifier selection for one reason type."
+      },
+      "Ref": {
+        "required": [
+          "group",
+          "kind",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "group": {
+            "type": "string",
+            "description": "Extension group"
+          },
+          "kind": {
+            "type": "string",
+            "description": "Extension kind"
+          },
+          "name": {
+            "type": "string",
+            "description": "Extension name. This field is mandatory"
+          },
+          "version": {
+            "type": "string",
+            "description": "Extension version"
+          }
+        },
+        "description": "Extension reference object. The name is mandatory"
+      },
+      "RemoveOperation": {
+        "required": [
+          "op",
+          "path"
+        ],
+        "type": "object",
+        "properties": {
+          "op": {
+            "type": "string",
+            "enum": [
+              "remove"
+            ]
+          },
+          "path": {
+            "pattern": "^(/[^/~]*(~[01][^/~]*)*)*$",
+            "type": "string",
+            "description": "A JSON Pointer path pointing to the location to move/copy from.",
+            "example": "/a/b/c"
+          }
+        }
+      },
+      "ReplaceOperation": {
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "op": {
+            "type": "string",
+            "enum": [
+              "replace"
+            ]
+          },
+          "path": {
+            "pattern": "^(/[^/~]*(~[01][^/~]*)*)*$",
+            "type": "string",
+            "description": "A JSON Pointer path pointing to the location to move/copy from.",
+            "example": "/a/b/c"
+          },
+          "value": {
+            "description": "Value can be any JSON value"
+          }
+        }
+      },
+      "SnapShotSpec": {
+        "required": [
+          "owner",
+          "rawType",
+          "subjectRef"
+        ],
+        "type": "object",
+        "properties": {
+          "contentPatch": {
+            "type": "string",
+            "description": "Full rendered content for a base snapshot, or a JSON-encoded line diff from the base rendered content."
+          },
+          "contributors": {
+            "uniqueItems": true,
+            "type": "array",
+            "description": "User metadata.name values that contributed to this snapshot.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "lastModifyTime": {
+            "type": "string",
+            "description": "Last time the snapshot content was modified.",
+            "format": "date-time"
+          },
+          "owner": {
+            "minLength": 1,
+            "type": "string",
+            "description": "User metadata.name of the snapshot owner."
+          },
+          "parentSnapshotName": {
+            "type": "string",
+            "description": "Parent Snapshot metadata.name in the snapshot revision chain."
+          },
+          "rawPatch": {
+            "type": "string",
+            "description": "Full raw source content for a base snapshot, or a JSON-encoded line diff from the base raw content."
+          },
+          "rawType": {
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string",
+            "description": "Source format of the raw content, such as markdown, html, json, asciidoc, or latex."
+          },
+          "subjectRef": {
+            "$ref": "#/components/schemas/Ref"
+          }
+        },
+        "description": "Content snapshot payload and metadata."
+      },
+      "Snapshot": {
+        "required": [
+          "apiVersion",
+          "kind",
+          "metadata",
+          "spec"
+        ],
+        "type": "object",
+        "properties": {
+          "apiVersion": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/Metadata"
+          },
+          "spec": {
+            "$ref": "#/components/schemas/SnapShotSpec"
+          }
+        },
+        "description": "Snapshot extension that stores a version of post or single page content."
+      },
+      "Stats": {
+        "type": "object",
+        "properties": {
+          "approvedComment": {
+            "type": "integer",
+            "description": "Total approved comment count.",
+            "format": "int32"
+          },
+          "totalComment": {
+            "type": "integer",
+            "description": "Total comment count, including comments that may not be approved.",
+            "format": "int32"
+          },
+          "upvote": {
+            "type": "integer",
+            "description": "Total upvote count.",
+            "format": "int32"
+          },
+          "visit": {
+            "type": "integer",
+            "description": "Total visit count.",
+            "format": "int32"
+          }
+        },
+        "description": "Aggregated visit, upvote, and comment counters for a content resource."
+      },
+      "Tag": {
+        "required": [
+          "apiVersion",
+          "kind",
+          "metadata",
+          "spec"
+        ],
+        "type": "object",
+        "properties": {
+          "apiVersion": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/Metadata"
+          },
+          "spec": {
+            "$ref": "#/components/schemas/TagSpec"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TagStatus"
+          }
+        },
+        "description": "Tag extension for grouping posts by free-form labels."
+      },
+      "TagSpec": {
+        "required": [
+          "displayName",
+          "slug"
+        ],
+        "type": "object",
+        "properties": {
+          "color": {
+            "pattern": "^#([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$",
+            "type": "string",
+            "description": "Display color of the tag in 3- or 6-digit hex notation, such as #fff or #ffffff."
+          },
+          "cover": {
+            "type": "string",
+            "description": "Cover image URL or attachment URI of the tag."
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of the tag."
+          },
+          "displayName": {
+            "minLength": 1,
+            "type": "string",
+            "description": "Display name of the tag."
+          },
+          "slug": {
+            "minLength": 1,
+            "type": "string",
+            "description": "URL slug used to build the tag permalink."
+          }
+        },
+        "description": "Desired tag display and rendering configuration."
+      },
+      "TagStatus": {
+        "type": "object",
+        "properties": {
+          "observedVersion": {
+            "type": "integer",
+            "description": "Metadata version observed by the last successful reconciliation.",
+            "format": "int64"
+          },
+          "permalink": {
+            "type": "string",
+            "description": "Absolute permalink calculated from the tag permalink policy."
+          },
+          "postCount": {
+            "type": "integer",
+            "description": "Total number of posts associated with the tag.",
+            "format": "int32"
+          },
+          "visiblePostCount": {
+            "type": "integer",
+            "description": "Total number of published and public posts associated with the tag.",
+            "format": "int32"
+          }
+        },
+        "description": "Observed tag state derived by content reconcilers."
+      },
+      "TestOperation": {
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "op": {
+            "type": "string",
+            "enum": [
+              "test"
+            ]
+          },
+          "path": {
+            "pattern": "^(/[^/~]*(~[01][^/~]*)*)*$",
+            "type": "string",
+            "description": "A JSON Pointer path pointing to the location to move/copy from.",
+            "example": "/a/b/c"
+          },
+          "value": {
+            "description": "Value can be any JSON value"
+          }
+        }
+      },
+      "TotpAuthLinkResponse": {
+        "required": [
+          "authLink",
+          "rawSecret"
+        ],
+        "type": "object",
+        "properties": {
+          "authLink": {
+            "type": "string",
+            "description": "otpauth URI that can be encoded as a QR code.",
+            "format": "uri"
+          },
+          "rawSecret": {
+            "type": "string",
+            "description": "Raw TOTP secret for manual authenticator setup."
+          }
+        },
+        "description": "TOTP provisioning data for configuring an authenticator app."
+      },
+      "TotpRequest": {
+        "required": [
+          "code",
+          "password",
+          "secret"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "TOTP code generated from the new secret."
+          },
+          "currentTotpCode": {
+            "type": "string",
+            "description": "Current TOTP code, required when replacing an existing TOTP authenticator."
+          },
+          "password": {
+            "minLength": 1,
+            "type": "string",
+            "description": "Current password of the authenticated user."
+          },
+          "secret": {
+            "minLength": 1,
+            "type": "string",
+            "description": "Raw TOTP secret returned by the auth-link endpoint."
+          }
+        },
+        "description": "TOTP configuration payload."
+      },
+      "TwoFactorAuthSettings": {
+        "required": [
+          "available",
+          "emailVerified",
+          "enabled",
+          "totpConfigured"
+        ],
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "description": "Check if 2FA is available."
+          },
+          "emailVerified": {
+            "type": "boolean",
+            "description": "Whether the user\u0027s email address has been verified."
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether two-factor authentication is enabled for the user."
+          },
+          "totpConfigured": {
+            "type": "boolean",
+            "description": "Whether a TOTP authenticator has been configured."
+          }
+        },
+        "description": "Two-factor authentication settings for the current user."
+      },
+      "UcUploadFromUrlRequest": {
+        "required": [
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "description": "custom file name"
+          },
+          "url": {
+            "type": "string",
+            "description": "remote file URL to transfer into user-center storage",
+            "format": "url"
+          }
+        },
+        "description": "User-center request payload for uploading from a URL."
+      },
+      "UcUserVo": {
+        "required": [
+          "name",
+          "passwordSet"
+        ],
+        "type": "object",
+        "properties": {
+          "avatar": {
+            "type": "string",
+            "description": "avatar of the current user"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "display name of the current user"
+          },
+          "name": {
+            "type": "string",
+            "description": "username of the current user"
+          },
+          "passwordSet": {
+            "type": "boolean",
+            "description": "whether the current user has a password set"
+          }
+        },
+        "description": "Masked current user profile. The password hash is never exposed."
+      },
+      "UploadForm": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "The file to upload. If not provided, the url will be used.",
+            "format": "binary"
+          },
+          "filename": {
+            "type": "string",
+            "description": "The filename to use when uploading from url. If not provided, the filename will be extracted from the url."
+          },
+          "url": {
+            "type": "string",
+            "description": "The url to upload from. If not provided, the file will be used."
+          }
+        },
+        "description": "Upload form from console. The file and url are mutually exclusive. If both are provided, the file will be used."
+      },
+      "UserConnection": {
+        "required": [
+          "apiVersion",
+          "kind",
+          "metadata",
+          "spec"
+        ],
+        "type": "object",
+        "properties": {
+          "apiVersion": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/Metadata"
+          },
+          "spec": {
+            "$ref": "#/components/schemas/UserConnectionSpec"
+          }
+        },
+        "description": "User connection extension that links a Halo user to an external OAuth2 account."
+      },
+      "UserConnectionSpec": {
+        "required": [
+          "providerUserId",
+          "registrationId",
+          "username"
+        ],
+        "type": "object",
+        "properties": {
+          "providerUserId": {
+            "type": "string",
+            "description": "The unique identifier for the user\u0027s connection to the OAuth provider. for example, the user\u0027s GitHub id."
+          },
+          "registrationId": {
+            "type": "string",
+            "description": "The name of the OAuth provider (e.g. Google, Facebook, Twitter)."
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "The time when the user connection was last updated.",
+            "format": "date-time"
+          },
+          "username": {
+            "type": "string",
+            "description": "The {@link Metadata#getName Metadata#getName()} of the user associated with the OAuth connection."
+          }
+        },
+        "description": "External OAuth2 account binding for a Halo user."
+      },
+      "UserDevice": {
+        "required": [
+          "active",
+          "currentDevice",
+          "device"
+        ],
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean",
+            "description": "Whether the device session is still active."
+          },
+          "currentDevice": {
+            "type": "boolean",
+            "description": "Whether this device matches the current session."
+          },
+          "device": {
+            "$ref": "#/components/schemas/Device"
+          }
+        },
+        "description": "User device entry with session state."
+      }
+    },
+    "securitySchemes": {
+      "basicAuth": {
+        "scheme": "basic",
+        "type": "http"
+      },
+      "bearerAuth": {
+        "bearerFormat": "JWT",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  }
+}

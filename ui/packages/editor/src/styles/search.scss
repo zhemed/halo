@@ -1,0 +1,11 @@
+.halo-rich-text-editor {
+  .ProseMirror {
+    .find-and-replace-result {
+      background-color: #ffd90050;
+
+      &.find-and-replace-result-current {
+        background-color: #ffd900;
+      }
+    }
+  }
+}

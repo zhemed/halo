@@ -1,0 +1,314 @@
+import {
+  findChildren,
+  mergeAttributes,
+  Node,
+  Plugin,
+  PluginKey,
+  TextSelection,
+  type CommandProps,
+} from "@/tiptap";
+import type { ExtensionOptions } from "@/types";
+import { ExtensionParagraph } from "../paragraph";
+import { NodeRangeSelection } from "../range-selection";
+import { ExtensionFigureCaption } from "./figure-caption";
+
+const FIGURE_MEDIA_TYPES = ["image", "video", "audio"] as const;
+
+declare module "@/tiptap" {
+  interface Commands<ReturnType> {
+    figure: {
+      setFigure: (attrs?: Record<string, unknown>) => ReturnType;
+      unsetFigure: () => ReturnType;
+      updateFigureContainerWidth: (width?: string) => ReturnType;
+    };
+  }
+}
+
+export interface ExtensionFigureOptions extends ExtensionOptions {
+  HTMLAttributes: Record<string, unknown>;
+}
+
+export const ExtensionFigure = Node.create<ExtensionFigureOptions>({
+  name: "figure",
+  group: "block",
+  content: `(${FIGURE_MEDIA_TYPES.join("|")})? figureCaption?`,
+  isolating: true,
+  // Priority must be higher than paragraph (1000) and code-block to ensure
+  // the Backspace shortcut handles figure selection correctly.
+
+  addHaloEditorMetadata() {
+    return {
+      ai: {
+        description:
+          "A semantic figure container for an optional single image, video, or audio item and an optional caption.",
+        exposure: "recommended",
+        useWhen: [
+          "An image, video, or audio item and its optional caption should form one semantic unit.",
+        ],
+        avoidWhen: ["The content is not media-related."],
+        contentGuidelines: [
+          "Use at most one media child, and use only image, video, or audio.",
+          "If present, place figureCaption after the media child.",
+          "Keep contentType consistent with the actual media child.",
+          "Do not generate an empty figure without media or a caption.",
+        ],
+        attributeGuidance: {
+          contentType: {
+            description: "The kind of media represented by this figure.",
+            allowedValues: [...FIGURE_MEDIA_TYPES, null],
+            omitWhen: ["The figure contains no media item."],
+          },
+        },
+        generation: {
+          mode: "direct-html",
+        },
+        examples: [
+          '<figure data-content-type="image"><img src="https://example.com/diagram.png" alt="Architecture diagram"><figcaption>System architecture</figcaption></figure>',
+          '<figure data-content-type="video"><video src="https://example.com/demo.mp4" width="100%" controls></video><figcaption>Product demonstration</figcaption></figure>',
+          '<figure data-content-type="audio"><audio src="https://example.com/interview.mp3" controls></audio><figcaption>Interview recording</figcaption></figure>',
+        ],
+      },
+    };
+  },
+
+  addOptions() {
+    return {
+      HTMLAttributes: {},
+      getToolbarItems() {
+        return [];
+      },
+    };
+  },
+
+  addAttributes() {
+    return {
+      contentType: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-content-type"),
+        renderHTML: (attributes) => {
+          return {
+            "data-content-type": attributes.contentType,
+          };
+        },
+      },
+    };
+  },
+
+  parseHTML() {
+    return [
+      {
+        tag: "figure",
+      },
+    ];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return [
+      "figure",
+      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
+        style: `display: flex; flex-direction: column;`,
+      }),
+      0,
+    ];
+  },
+
+  addExtensions() {
+    return [ExtensionFigureCaption];
+  },
+
+  addKeyboardShortcuts() {
+    return {
+      Enter: ({ editor }) => {
+        const { state } = editor;
+        const { selection } = state;
+        const { $from } = selection;
+
+        let inFigure = false;
+        let figureDepth = -1;
+        for (let depth = $from.depth; depth > 0; depth--) {
+          const node = $from.node(depth);
+          if (node.type.name === this.name) {
+            inFigure = true;
+            figureDepth = depth;
+            break;
+          }
+        }
+
+        if (!inFigure) {
+          return false;
+        }
+
+        for (let depth = $from.depth; depth > 0; depth--) {
+          const node = $from.node(depth);
+          if (node.type.name === ExtensionFigureCaption.name) {
+            return false;
+          }
+        }
+
+        const figureNode = $from.node(figureDepth);
+        const figurePos = $from.before(figureDepth);
+        const afterFigurePos = figurePos + figureNode.nodeSize;
+
+        editor
+          .chain()
+          .command(({ tr }) => {
+            const paragraph = tr.doc.type.schema.nodes.paragraph.create();
+            tr.insert(afterFigurePos, paragraph);
+            tr.setSelection(
+              TextSelection.near(tr.doc.resolve(afterFigurePos + 1))
+            );
+            return true;
+          })
+          .run();
+
+        return true;
+      },
+      Backspace: ({ editor }) => {
+        const { state } = editor;
+        const { selection, doc } = state;
+        const { $from, empty } = selection;
+        if (!empty || $from.parentOffset !== 0) {
+          return false;
+        }
+
+        if ($from.parent.type.name !== ExtensionParagraph.name) {
+          return false;
+        }
+
+        const beforePos = $from.before($from.depth);
+        if (beforePos <= 0) {
+          return false;
+        }
+
+        const beforeResolve = doc.resolve(beforePos - 1);
+        const nodeBefore = beforeResolve.nodeBefore;
+
+        if (
+          !nodeBefore ||
+          nodeBefore.type.name !== ExtensionFigureCaption.name
+        ) {
+          return false;
+        }
+        let depth = beforeResolve.depth;
+        while (depth > 0) {
+          const node = beforeResolve.node(depth);
+          if (node.type.name === this.name) {
+            const figurePos = beforeResolve.before(depth);
+            const rangeSelection = NodeRangeSelection.create(
+              doc,
+              figurePos,
+              figurePos + node.nodeSize
+            );
+            const tr = state.tr.setSelection(rangeSelection);
+            editor.view.dispatch(tr);
+            return true;
+          }
+          depth--;
+        }
+        return false;
+      },
+    };
+  },
+
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey("figureAutoDelete"),
+        appendTransaction: (transactions, _oldState, newState) => {
+          const docChanged = transactions.some((tr) => tr.docChanged);
+          if (!docChanged) {
+            return null;
+          }
+          const tr = newState.tr;
+          const nodesToDelete: { pos: number; size: number }[] = [];
+
+          newState.doc.descendants((node, pos) => {
+            if (node.type.name !== this.name) {
+              return;
+            }
+
+            let hasValidContent = false;
+
+            node.forEach((child) => {
+              if (
+                child.type.name !== ExtensionParagraph.name ||
+                child.childCount > 0 ||
+                child.textContent.trim().length > 0
+              ) {
+                hasValidContent = true;
+              }
+            });
+
+            if (!hasValidContent) {
+              nodesToDelete.push({
+                pos: pos,
+                size: node.nodeSize,
+              });
+            }
+          });
+
+          nodesToDelete
+            .sort((a, b) => b.pos - a.pos)
+            .forEach(({ pos, size }) => {
+              tr.delete(pos, pos + size);
+            });
+
+          return nodesToDelete.length > 0 ? tr : null;
+        },
+      }),
+    ];
+  },
+
+  addCommands() {
+    return {
+      setFigure:
+        (attrs?: Record<string, unknown>) =>
+        ({ commands }: CommandProps) => {
+          return commands.wrapIn(this.name, attrs);
+        },
+      unsetFigure:
+        () =>
+        ({ commands }: CommandProps) => {
+          return commands.lift(this.name);
+        },
+      updateFigureContainerWidth:
+        (width?: string) =>
+        ({ state, dispatch }: CommandProps) => {
+          const { selection } = state;
+          const { $from } = selection;
+
+          let figureDepth = -1;
+          for (let d = $from.depth; d > 0; d--) {
+            if ($from.node(d).type.name === this.name) {
+              figureDepth = d;
+              break;
+            }
+          }
+
+          if (figureDepth === -1) {
+            return false;
+          }
+
+          const figureNode = $from.node(figureDepth);
+          const figureCaptionNodes = findChildren(
+            figureNode,
+            (node) => node.type.name === ExtensionFigureCaption.name
+          );
+
+          if (figureCaptionNodes.length === 0) {
+            return false;
+          }
+
+          const figureCaptionNode = figureCaptionNodes[0];
+          const figurePos = $from.start(figureDepth);
+          const captionPos = figurePos + figureCaptionNode.pos;
+
+          const tr = state.tr.setNodeMarkup(captionPos, undefined, {
+            width: width,
+          });
+          dispatch?.(tr);
+          return true;
+        },
+    };
+  },
+});

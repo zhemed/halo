@@ -1,0 +1,367 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+import Code from "./assets/code-brackets.svg";
+import Colors from "./assets/colors.svg";
+import Comments from "./assets/comments.svg";
+import Direction from "./assets/direction.svg";
+import Flow from "./assets/flow.svg";
+import Plugin from "./assets/plugin.svg";
+import Repo from "./assets/repo.svg";
+import StackAlt from "./assets/stackalt.svg";
+
+<Meta title="Introduction" />
+
+<style>
+  {`
+    .intro-page {
+      color: #0e1731;
+      max-width: 1040px;
+    }
+
+    .intro-hero {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #ffffff 0%, #f8fafc 58%, #eefaf5 100%);
+      padding: 36px;
+      margin-bottom: 32px;
+    }
+
+    .intro-eyebrow {
+      color: #13966f;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0;
+      line-height: 18px;
+      margin: 0 0 12px;
+      text-transform: uppercase;
+    }
+
+    .intro-title {
+      color: #0e1731;
+      font-size: 40px;
+      line-height: 48px;
+      font-weight: 750;
+      margin: 0;
+    }
+
+    .intro-lede {
+      color: #4b5563;
+      font-size: 16px;
+      line-height: 26px;
+      margin: 16px 0 0;
+      max-width: 720px;
+    }
+
+    .intro-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .intro-action {
+      align-items: center;
+      background: #0e1731;
+      border: 1px solid #0e1731;
+      border-radius: 6px;
+      color: #ffffff;
+      display: inline-flex;
+      font-size: 14px;
+      font-weight: 650;
+      justify-content: center;
+      min-height: 40px;
+      padding: 0 16px;
+      text-decoration: none;
+    }
+
+    .intro-action:hover {
+      color: #ffffff;
+      text-decoration: none;
+    }
+
+    .intro-action.secondary {
+      background: #ffffff;
+      color: #0e1731;
+    }
+
+    .intro-section {
+      margin-top: 32px;
+    }
+
+    .intro-section h2 {
+      color: #0e1731;
+      font-size: 22px;
+      line-height: 30px;
+      margin: 0 0 8px;
+    }
+
+    .intro-copy {
+      color: #6b7280;
+      font-size: 14px;
+      line-height: 22px;
+      margin: 0 0 16px;
+      max-width: 760px;
+    }
+
+    .intro-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1fr;
+    }
+
+    @media (min-width: 620px) {
+      .intro-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .intro-hero {
+        padding: 24px;
+      }
+
+      .intro-title {
+        font-size: 32px;
+        line-height: 40px;
+      }
+
+      .intro-action {
+        width: 100%;
+      }
+    }
+
+    .intro-card {
+      align-items: flex-start;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      color: #0e1731;
+      display: flex;
+      gap: 16px;
+      min-height: 112px;
+      padding: 18px;
+      text-decoration: none;
+      transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+    }
+
+    .intro-card:hover {
+      border-color: #4ccba0;
+      box-shadow: 0 12px 28px rgba(14, 23, 49, 0.08);
+      color: #0e1731;
+      text-decoration: none;
+      transform: translateY(-2px);
+    }
+
+    .intro-card img {
+      flex: none;
+      height: 36px;
+      margin-top: 2px;
+      width: 36px;
+    }
+
+    .intro-card strong {
+      display: block;
+      font-size: 15px;
+      line-height: 22px;
+      margin-bottom: 4px;
+    }
+
+    .intro-card span {
+      color: #6b7280;
+      display: block;
+      font-size: 14px;
+      line-height: 22px;
+    }
+
+    .intro-pill-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .intro-pill {
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 999px;
+      color: #374151;
+      font-size: 13px;
+      line-height: 20px;
+      padding: 4px 10px;
+    }
+
+    .intro-note {
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-left: 4px solid #4ccba0;
+      border-radius: 8px;
+      color: #4b5563;
+      font-size: 14px;
+      line-height: 22px;
+      margin-top: 28px;
+      padding: 16px 18px;
+    }
+
+    .intro-note strong {
+      color: #0e1731;
+    }
+
+    .intro-note code {
+      background: #eef2f7;
+      border-radius: 4px;
+      color: #0e1731;
+      font-size: 12px;
+      padding: 2px 5px;
+    }
+  `}
+</style>
+
+<div className="intro-page">
+  <section className="intro-hero">
+    <p className="intro-eyebrow">@halo-dev/components</p>
+    <h1 className="intro-title">Halo Components Storybook</h1>
+    <div className="intro-lede">
+      A focused workspace for documenting and reviewing the shared Vue
+      components used across Halo Console, User Center, and plugin-facing UI
+      surfaces.
+    </div>
+    <div className="intro-actions">
+      <a
+        className="intro-action"
+        href="/?path=/docs/components-button--docs"
+        target="_top"
+      >
+        Start with Button
+      </a>
+      <a
+        className="intro-action secondary"
+        href="https://storybook.js.org/docs"
+        target="_blank"
+        rel="noreferrer"
+      >
+        Storybook docs
+      </a>
+    </div>
+  </section>
+
+  <section className="intro-section">
+    <h2>What to look for</h2>
+    <div className="intro-copy">
+      The stories are written as product-shaped examples instead of abstract
+      control demos, so component states can be reviewed in scenarios that feel
+      close to Halo administration workflows.
+    </div>
+
+    <div className="intro-grid">
+      <a
+        className="intro-card"
+        href="/?path=/docs/components-button--docs"
+        target="_top"
+      >
+        <img src={Code} alt="" />
+        <span>
+          <strong>Foundational actions</strong>
+          Buttons, switches, tags, status dots, spacing, and loading states used
+          in dense admin surfaces.
+        </span>
+      </a>
+      <a
+        className="intro-card"
+        href="/?path=/docs/components-entity--docs"
+        target="_top"
+      >
+        <img src={Flow} alt="" />
+        <span>
+          <strong>Structured content</strong>
+          Entity rows, descriptions, cards, tabs, and menus for list and detail
+          experiences.
+        </span>
+      </a>
+      <a
+        className="intro-card"
+        href="/?path=/docs/components-dialog--docs"
+        target="_top"
+      >
+        <img src={Direction} alt="" />
+        <span>
+          <strong>Decision flows</strong>
+          Dialogs, modals, dropdowns, and page headers that model common content
+          operations.
+        </span>
+      </a>
+      <a
+        className="intro-card"
+        href="/?path=/docs/components-toast--docs"
+        target="_top"
+      >
+        <img src={Comments} alt="" />
+        <span>
+          <strong>Feedback patterns</strong>
+          Toasts, alerts, empty states, and tooltips for success, warning, and
+          recovery moments.
+        </span>
+      </a>
+    </div>
+
+  </section>
+
+  <section className="intro-section">
+    <h2>Story standards</h2>
+    <div className="intro-copy">
+      When adding or revising stories, prefer realistic Halo vocabulary and keep
+      examples small enough to reveal component behavior clearly.
+    </div>
+
+    <div className="intro-grid">
+      <div className="intro-card">
+        <img src={Repo} alt="" />
+        <span>
+          <strong>Source first</strong>
+          Place stories next to the component as <code>*.stories.ts</code> and
+          use package source imports through the configured aliases.
+        </span>
+      </div>
+      <div className="intro-card">
+        <img src={Colors} alt="" />
+        <span>
+          <strong>Design tokens</strong>
+          Use existing Tailwind and Halo component tokens before introducing
+          one-off colors or layout rules.
+        </span>
+      </div>
+      <div className="intro-card">
+        <img src={Plugin} alt="" />
+        <span>
+          <strong>Plugin-aware surfaces</strong>
+          Favor examples that also make sense for plugin developers extending
+          Halo UI.
+        </span>
+      </div>
+      <div className="intro-card">
+        <img src={StackAlt} alt="" />
+        <span>
+          <strong>Reviewable states</strong>
+          Cover default, loading, empty, disabled, destructive, and long-content
+          cases where the component supports them.
+        </span>
+      </div>
+    </div>
+
+    <div className="intro-pill-list" aria-label="Covered component groups">
+      <span className="intro-pill">Actions</span>
+      <span className="intro-pill">Navigation</span>
+      <span className="intro-pill">Data display</span>
+      <span className="intro-pill">Feedback</span>
+      <span className="intro-pill">Overlays</span>
+      <span className="intro-pill">Layout</span>
+    </div>
+
+  </section>
+
+  <div className="intro-note">
+    <strong>Local workflow:</strong> run{" "}
+    <code>pnpm -C ui --filter @halo-dev/components storybook</code> for local
+    review, and use{" "}
+    <code>pnpm -C ui --filter @halo-dev/components build-storybook</code> before
+    publishing Storybook changes.
+  </div>
+</div>

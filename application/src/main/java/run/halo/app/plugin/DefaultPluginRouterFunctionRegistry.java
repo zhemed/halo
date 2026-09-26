@@ -1,0 +1,70 @@
+package run.halo.app.plugin;
+
+import java.util.Collection;
+import java.util.concurrent.CopyOnWriteArraySet;
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.server.*;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import run.halo.app.infra.SecureServerRequest;
+import run.halo.app.infra.exception.PluginRuntimeIncompatibleException;
+
+/**
+ * A composite {@link RouterFunction} implementation for plugin.
+ *
+ * @author guqing
+ * @since 2.0.0
+ */
+@Component
+public class DefaultPluginRouterFunctionRegistry
+        implements RouterFunction<ServerResponse>, PluginRouterFunctionRegistry {
+
+    private final Collection<RouterFunction<ServerResponse>> routerFunctions;
+
+    public DefaultPluginRouterFunctionRegistry() {
+        this.routerFunctions = new CopyOnWriteArraySet<>();
+    }
+
+    @Override
+    public Mono<HandlerFunction<ServerResponse>> route(ServerRequest request) {
+        var secureRequest = new SecureServerRequest(request);
+        return Flux.fromIterable(this.routerFunctions)
+                .concatMap(routerFunction -> {
+                    // wrap the handler function
+                    return routerFunction
+                            .route(secureRequest)
+                            .map(hf -> (HandlerFunction<ServerResponse>) serverRequest -> {
+                                try {
+                                    return hf.handle(secureRequest);
+                                } catch (LinkageError le) {
+                                    return Mono.error(new PluginRuntimeIncompatibleException(le));
+                                }
+                            });
+                })
+                .next();
+    }
+
+    @Override
+    public void accept(RouterFunctions.Visitor visitor) {
+        this.routerFunctions.forEach(routerFunction -> routerFunction.accept(visitor));
+    }
+
+    @Override
+    public void register(Collection<RouterFunction<ServerResponse>> routerFunctions) {
+        this.routerFunctions.addAll(routerFunctions);
+    }
+
+    @Override
+    public void unregister(Collection<RouterFunction<ServerResponse>> routerFunctions) {
+        this.routerFunctions.removeAll(routerFunctions);
+    }
+
+    /**
+     * Only for testing.
+     *
+     * @return maintained router functions.
+     */
+    Collection<RouterFunction<ServerResponse>> getRouterFunctions() {
+        return routerFunctions;
+    }
+}

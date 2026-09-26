@@ -1,0 +1,86 @@
+package run.halo.app.core.reconciler;
+
+import static run.halo.app.extension.ExtensionUtil.addFinalizers;
+import static run.halo.app.extension.ExtensionUtil.removeFinalizers;
+import static run.halo.app.extension.index.query.Queries.equal;
+
+import java.util.Map;
+import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Component;
+import run.halo.app.content.permalinks.TagPermalinkPolicy;
+import run.halo.app.core.extension.content.Constant;
+import run.halo.app.core.extension.content.Tag;
+import run.halo.app.event.post.TagUpdatedEvent;
+import run.halo.app.extension.ExtensionClient;
+import run.halo.app.extension.ExtensionUtil;
+import run.halo.app.extension.ListOptions;
+import run.halo.app.extension.MetadataUtil;
+import run.halo.app.extension.controller.Controller;
+import run.halo.app.extension.controller.ControllerBuilder;
+import run.halo.app.extension.controller.Reconciler;
+
+/**
+ * Reconciler for {@link Tag}.
+ *
+ * @author guqing
+ * @since 2.0.0
+ */
+@Component
+@RequiredArgsConstructor
+public class TagReconciler implements Reconciler<Reconciler.Request> {
+    static final String FINALIZER_NAME = "tag-protection";
+    private final ExtensionClient client;
+    private final TagPermalinkPolicy tagPermalinkPolicy;
+    private final ApplicationEventPublisher eventPublisher;
+
+    @Override
+    public Result reconcile(Request request) {
+        client.fetch(Tag.class, request.name()).ifPresent(tag -> {
+            if (ExtensionUtil.isDeleted(tag)) {
+                if (removeFinalizers(tag.getMetadata(), Set.of(FINALIZER_NAME))) {
+                    client.update(tag);
+                    eventPublisher.publishEvent(new TagUpdatedEvent(this, tag));
+                }
+                return;
+            }
+
+            addFinalizers(tag.getMetadata(), Set.of(FINALIZER_NAME));
+
+            Map<String, String> annotations = MetadataUtil.nullSafeAnnotations(tag);
+
+            if (!annotations.containsKey(Constant.PERMALINK_PATTERN_ANNO)) {
+                var newPattern = tagPermalinkPolicy.pattern();
+                annotations.put(Constant.PERMALINK_PATTERN_ANNO, newPattern);
+            }
+
+            var status = tag.getStatusOrDefault();
+            String permalink = tagPermalinkPolicy.permalink(tag);
+            status.setPermalink(permalink);
+
+            if (status.getPostCount() == null) {
+                status.setPostCount(0);
+            }
+            if (status.getVisiblePostCount() == null) {
+                status.setVisiblePostCount(0);
+            }
+
+            // Update the observed version.
+            status.setObservedVersion(tag.getMetadata().getVersion() + 1);
+
+            client.update(tag);
+            eventPublisher.publishEvent(new TagUpdatedEvent(this, tag));
+        });
+        return Result.doNotRetry();
+    }
+
+    @Override
+    public Controller setupWith(ControllerBuilder builder) {
+        return builder.extension(new Tag())
+                .syncAllListOptions(ListOptions.builder()
+                        .andQuery(equal(Tag.REQUIRE_SYNC_ON_STARTUP_INDEX_NAME, true))
+                        .build())
+                .build();
+    }
+}

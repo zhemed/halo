@@ -1,0 +1,64 @@
+package run.halo.app.theme.finders;
+
+import java.util.List;
+import java.util.Map;
+import org.jspecify.annotations.Nullable;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import run.halo.app.core.extension.content.Post;
+import run.halo.app.extension.ListResult;
+import run.halo.app.theme.finders.vo.*;
+
+/**
+ * A finder for {@link Post}.
+ *
+ * @author guqing
+ * @since 2.0.0
+ */
+public interface PostFinder {
+
+    /**
+     * Gets post detail by name. We ensure the post is public, non-deleted and published.
+     *
+     * @param postName is post name
+     * @return post detail
+     */
+    Mono<PostVo> getByName(String postName);
+
+    Mono<ContentVo> content(String postName);
+
+    Mono<NavigationPostVo> cursor(String current);
+
+    Mono<NavigationPostVo> cursorByCategory(String current);
+
+    Flux<ListedPostVo> listAll();
+
+    /**
+     * Gets random posts.
+     *
+     * @param maxSize the max size of random posts. It should be between 1 and 100.
+     * @return a list of random posts with size less than or equal to {@code maxSize}.
+     */
+    Mono<List<ListedPostVo>> random(int maxSize);
+
+    /**
+     * Lists posts by query params.
+     *
+     * @param params query params see {@link run.halo.app.theme.finders.impl.PostFinderImpl.PostQuery}
+     */
+    Mono<ListResult<ListedPostVo>> list(Map<String, Object> params);
+
+    Mono<ListResult<ListedPostVo>> list(@Nullable Integer page, @Nullable Integer size);
+
+    Mono<ListResult<ListedPostVo>> listByCategory(@Nullable Integer page, @Nullable Integer size, String categoryName);
+
+    Mono<ListResult<ListedPostVo>> listByTag(@Nullable Integer page, @Nullable Integer size, String tag);
+
+    Mono<ListResult<ListedPostVo>> listByOwner(@Nullable Integer page, @Nullable Integer size, String owner);
+
+    Mono<ListResult<PostArchiveVo>> archives(Integer page, Integer size);
+
+    Mono<ListResult<PostArchiveVo>> archives(Integer page, Integer size, String year);
+
+    Mono<ListResult<PostArchiveVo>> archives(Integer page, Integer size, String year, String month);
+}

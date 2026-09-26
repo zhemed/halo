@@ -1,0 +1,112 @@
+<script lang="ts" setup>
+import { useThemeStore } from "@console/stores/theme";
+import { consoleApiClient } from "@halo-dev/api-client";
+import { Dialog, Toast, VAlert } from "@halo-dev/components";
+import { useQueryClient } from "@tanstack/vue-query";
+import type { Ref } from "vue";
+import { inject, ref } from "vue";
+import { useI18n } from "vue-i18n";
+import type {
+  UppyUploadErrorResponse,
+  UppyUploadFile,
+} from "@/components/upload/types";
+import { THEME_ALREADY_EXISTS_TYPE } from "../../constants";
+import type { ThemeInstallationErrorResponse } from "../../types";
+
+const { t } = useI18n();
+const queryClient = useQueryClient();
+const themeStore = useThemeStore();
+
+const activeTabId = inject<Ref<string>>("activeTabId", ref(""));
+
+const endpoint = "/apis/api.console.halo.run/v1alpha1/themes/install";
+
+const onUploaded = () => {
+  Toast.success(t("core.common.toast.install_success"));
+
+  queryClient.invalidateQueries({ queryKey: ["themes"] });
+  themeStore.fetchActivatedTheme();
+
+  activeTabId.value = "installed";
+};
+
+const onError = (
+  file: UppyUploadFile | undefined,
+  response: UppyUploadErrorResponse | undefined
+) => {
+  const body = response?.body as ThemeInstallationErrorResponse | undefined;
+
+  if (body?.type === THEME_ALREADY_EXISTS_TYPE) {
+    handleCatchExistsException(body, file?.data as File | undefined);
+  }
+};
+
+const handleCatchExistsException = async (
+  error: ThemeInstallationErrorResponse,
+  file?: File
+) => {
+  Dialog.info({
+    title: t("core.theme.operations.existed_during_installation.title"),
+    description: t(
+      "core.theme.operations.existed_during_installation.description"
+    ),
+    confirmText: t("core.common.buttons.confirm"),
+    cancelText: t("core.common.buttons.cancel"),
+    onConfirm: async () => {
+      if (!file) {
+        throw new Error("File is required");
+      }
+
+      await consoleApiClient.theme.theme.upgradeTheme({
+        name: error.themeName,
+        file: file,
+      });
+
+      Toast.success(t("core.common.toast.upgrade_success"));
+
+      queryClient.invalidateQueries({ queryKey: ["themes"] });
+      themeStore.fetchActivatedTheme();
+
+      activeTabId.value = "installed";
+    },
+  });
+};
+</script>
+
+<template>
+  <div class="pb-3">
+    <VAlert
+      type="warning"
+      :title="$t('core.common.text.warning')"
+      :closable="false"
+    >
+      <template #description>
+        <i18n-t
+          keypath="core.theme.list_modal.security_alert.description"
+          tag="p"
+        >
+          <template #url>
+            <a
+              href="https://www.halo.run/store/apps"
+              target="_blank"
+              class="underline-offset-2 hover:text-gray-900 hover:underline"
+            >
+              {{ $t("core.common.text.official_app_store") }}
+            </a>
+          </template>
+        </i18n-t>
+      </template>
+    </VAlert>
+  </div>
+  <UppyUpload
+    :restrictions="{
+      maxNumberOfFiles: 1,
+      allowedFileTypes: ['.zip'],
+    }"
+    :endpoint="endpoint"
+    width="100%"
+    auto-proceed
+    @uploaded="onUploaded"
+    @error="onError"
+  />
+</template>

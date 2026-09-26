@@ -1,0 +1,149 @@
+<script lang="ts" setup>
+import type { Plugin } from "@halo-dev/api-client";
+import { consoleApiClient } from "@halo-dev/api-client";
+import { Dialog, Toast, VAlert } from "@halo-dev/components";
+import { useQueryClient } from "@tanstack/vue-query";
+import { computed, inject, ref, type Ref } from "vue";
+import { useI18n } from "vue-i18n";
+import type {
+  UppyUploadErrorResponse,
+  UppyUploadFile,
+  UppyUploadSuccessResponse,
+} from "@/components/upload/types";
+import { PLUGIN_ALREADY_EXISTS_TYPE } from "../../constants";
+import type { PluginInstallationErrorResponse } from "../../types";
+
+const emit = defineEmits<{
+  (event: "close-modal"): void;
+}>();
+
+const { t } = useI18n();
+const queryClient = useQueryClient();
+
+const pluginToUpgrade = inject<Ref<Plugin | undefined>>(
+  "pluginToUpgrade",
+  ref()
+);
+
+const endpoint = computed(() => {
+  if (pluginToUpgrade.value) {
+    return `/apis/api.console.halo.run/v1alpha1/plugins/${pluginToUpgrade.value.metadata.name}/upgrade`;
+  }
+  return "/apis/api.console.halo.run/v1alpha1/plugins/install";
+});
+
+const onUploaded = async (response: UppyUploadSuccessResponse) => {
+  if (pluginToUpgrade.value) {
+    Toast.success(t("core.common.toast.upgrade_success"));
+    window.location.reload();
+    return;
+  }
+
+  emit("close-modal");
+
+  queryClient.invalidateQueries({ queryKey: ["plugins"] });
+
+  handleShowActiveModalAfterInstall(response.body as Plugin);
+};
+
+const onError = (
+  file: UppyUploadFile | undefined,
+  response: UppyUploadErrorResponse | undefined
+) => {
+  const body = response?.body as PluginInstallationErrorResponse | undefined;
+
+  if (body?.type === PLUGIN_ALREADY_EXISTS_TYPE) {
+    handleCatchExistsException(body, file?.data as File | undefined);
+  }
+};
+
+const handleShowActiveModalAfterInstall = (plugin: Plugin) => {
+  Dialog.success({
+    title: t("core.plugin.upload_modal.operations.active_after_install.title"),
+    description: t(
+      "core.plugin.upload_modal.operations.active_after_install.description"
+    ),
+    confirmText: t("core.common.buttons.confirm"),
+    cancelText: t("core.common.buttons.cancel"),
+    onConfirm: async () => {
+      try {
+        await consoleApiClient.plugin.plugin.changePluginRunningState({
+          name: plugin.metadata.name,
+          pluginRunningStateRequest: {
+            enable: true,
+          },
+        });
+
+        window.location.reload();
+      } catch (e) {
+        console.error(e);
+      }
+    },
+  });
+};
+
+const handleCatchExistsException = async (
+  error: PluginInstallationErrorResponse,
+  file?: File
+) => {
+  Dialog.info({
+    title: t(
+      "core.plugin.upload_modal.operations.existed_during_installation.title"
+    ),
+    description: t(
+      "core.plugin.upload_modal.operations.existed_during_installation.description"
+    ),
+    confirmText: t("core.common.buttons.confirm"),
+    cancelText: t("core.common.buttons.cancel"),
+    onConfirm: async () => {
+      await consoleApiClient.plugin.plugin.upgradePlugin({
+        name: error.pluginName,
+        file: file,
+      });
+
+      Toast.success(t("core.common.toast.upgrade_success"));
+
+      window.location.reload();
+    },
+  });
+};
+</script>
+
+<template>
+  <div class="mb-3">
+    <VAlert
+      type="warning"
+      :title="$t('core.common.text.warning')"
+      :closable="false"
+    >
+      <template #description>
+        <i18n-t
+          keypath="core.plugin.upload_modal.security_alert.description"
+          tag="p"
+        >
+          <template #url>
+            <a
+              href="https://www.halo.run/store/apps"
+              target="_blank"
+              class="underline-offset-2 hover:text-gray-900 hover:underline"
+            >
+              {{ $t("core.common.text.official_app_store") }}
+            </a>
+          </template>
+        </i18n-t>
+      </template>
+    </VAlert>
+  </div>
+
+  <UppyUpload
+    :restrictions="{
+      maxNumberOfFiles: 1,
+      allowedFileTypes: ['.jar'],
+    }"
+    :endpoint="endpoint"
+    width="100%"
+    auto-proceed
+    @uploaded="onUploaded"
+    @error="onError"
+  />
+</template>

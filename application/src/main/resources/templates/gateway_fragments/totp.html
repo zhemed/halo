@@ -1,0 +1,69 @@
+<form
+  th:fragment="form"
+  class="halo-form"
+  th:action="@{/challenges/two-factor/totp}"
+  name="two-factor-form"
+  id="two-factor-form"
+  method="post"
+>
+  <div class="alert alert-error" role="alert" th:if="${param.error.size() > 0}">
+    <strong
+      th:if="${#strings.equals(param.error[0], 'rate-limit-exceeded')}"
+      th:text="#{form.messages.rateLimitError}"
+    ></strong>
+    <strong
+      th:unless="${#strings.equals(param.error[0], 'rate-limit-exceeded')}"
+      th:text="#{form.messages.invalidError}"
+    ></strong>
+  </div>
+  <div class="form-item">
+    <label for="code" th:text="#{form.code.label}"></label>
+    <div class="form-input">
+      <input
+        type="text"
+        inputmode="numeric"
+        id="code"
+        name="code"
+        autocomplete="one-time-code"
+        pattern="\d{6}"
+        maxlength="6"
+        autofocus
+        required
+      />
+    </div>
+  </div>
+  <div class="form-item">
+    <button type="submit" th:text="#{form.submit}"></button>
+  </div>
+  <div class="form-item">
+    <a th:href="@{/logout}" class="cancel-link" th:text="#{form.cancel}"></a>
+  </div>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const form = document.getElementById("two-factor-form");
+      const codeInput = document.getElementById("code");
+      const submitButton = form.querySelector('button[type="submit"]');
+      let submitting = false;
+
+      form.addEventListener("submit", function (event) {
+        if (submitting) {
+          event.preventDefault();
+          return;
+        }
+
+        submitting = true;
+        submitButton.disabled = true;
+      });
+
+      codeInput.addEventListener("input", function (event) {
+        if (submitting || event.isComposing) {
+          return;
+        }
+
+        if (/^\d{6}$/.test(codeInput.value)) {
+          form.requestSubmit();
+        }
+      });
+    });
+  </script>
+</form>

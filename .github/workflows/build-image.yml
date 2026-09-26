@@ -1,0 +1,95 @@
+name: build-image
+
+# 打 tag 自动构建并推送镜像到 ghcr.io；也可手动触发（默认只构建不推送）
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      push:
+        description: "是否推送镜像到 ghcr.io"
+        type: boolean
+        default: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 解析版本与基座镜像
+        id: meta
+        run: |
+          VERSION="$(grep -E '^\s*version\s*=' gradle.properties | head -1 | cut -d= -f2 | tr -d ' ')"
+          {
+            echo "version=$VERSION"
+            echo "halo_base=halohub/halo:${VERSION%.*}"
+          } >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=v${VERSION}-custom.${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: 编译后端
+        run: ./gradlew :application:bootJar -x test --no-daemon
+
+      - name: 取官方 jar（仅用于提取 console 前端资源）
+        run: |
+          CID="$(docker create '${{ steps.meta.outputs.halo_base }}')"
+          docker cp "$CID:/application/application.jar" .upstream-official.jar
+          docker rm -f "$CID"
+
+      - name: 回填 console 资源并校验（产出 .dsh-build/application.jar）
+        run: ./.dsh-build/build.sh --no-image
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: 登录 ghcr.io
+        if: ${{ github.event_name == 'push' || inputs.push }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 构建并推送镜像
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: .dsh-build/Dockerfile
+          build-args: |
+            HALO_BASE=${{ steps.meta.outputs.halo_base }}
+          push: ${{ github.event_name == 'push' || inputs.push }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 摘要
+        run: |
+          {
+            echo "### 分叉镜像已构建"
+            echo ""
+            echo "| 项 | 值 |"
+            echo "|---|---|"
+            echo "| 镜像 | \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}\` |"
+            echo "| 基座 | \`${{ steps.meta.outputs.halo_base }}\` |"
+            echo "| 已推送 | \`${{ github.event_name == 'push' || inputs.push }}\` |"
+            echo "| commit | \`${{ github.sha }}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"

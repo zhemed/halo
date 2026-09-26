@@ -1,0 +1,348 @@
+package run.halo.app.core.reconciler;
+
+import static run.halo.app.extension.ExtensionUtil.addFinalizers;
+import static run.halo.app.extension.ExtensionUtil.isDeleted;
+import static run.halo.app.extension.ExtensionUtil.removeFinalizers;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.core.retry.RetryException;
+import org.springframework.core.retry.RetryPolicy;
+import org.springframework.core.retry.RetryTemplate;
+import org.springframework.stereotype.Component;
+import org.springframework.util.Assert;
+import org.springframework.util.FileSystemUtils;
+import org.springframework.util.backoff.FixedBackOff;
+import reactor.core.Exceptions;
+import run.halo.app.core.extension.AnnotationSetting;
+import run.halo.app.core.extension.Setting;
+import run.halo.app.core.extension.Theme;
+import run.halo.app.core.extension.notification.NotificationTemplate;
+import run.halo.app.extension.ConfigMap;
+import run.halo.app.extension.Extension;
+import run.halo.app.extension.ExtensionClient;
+import run.halo.app.extension.GroupVersionKind;
+import run.halo.app.extension.MetadataUtil;
+import run.halo.app.extension.Unstructured;
+import run.halo.app.extension.controller.Controller;
+import run.halo.app.extension.controller.ControllerBuilder;
+import run.halo.app.extension.controller.Reconciler;
+import run.halo.app.extension.controller.Reconciler.Request;
+import run.halo.app.infra.Condition;
+import run.halo.app.infra.ConditionStatus;
+import run.halo.app.infra.SystemVersionSupplier;
+import run.halo.app.infra.ThemeRootGetter;
+import run.halo.app.infra.exception.ThemeUninstallException;
+import run.halo.app.infra.utils.ReactiveUtils;
+import run.halo.app.infra.utils.SettingUtils;
+import run.halo.app.infra.utils.VersionUtils;
+import run.halo.app.theme.TemplateEngineManager;
+import run.halo.app.theme.ThemeLayoutCompatibilityChecker;
+import run.halo.app.theme.ThemeScreenshots;
+import run.halo.app.theme.ThemeUiResources;
+import run.halo.app.theme.service.ThemeUtils;
+
+/**
+ * Reconciler for theme.
+ *
+ * @author guqing
+ * @since 2.0.0
+ */
+@Slf4j
+@Component
+@RequiredArgsConstructor
+class ThemeReconciler implements Reconciler<Request> {
+    private static final Duration BLOCKING_TIMEOUT = ReactiveUtils.DEFAULT_TIMEOUT;
+    private static final String FINALIZER_NAME = "theme-protection";
+    private static final List<String> LOCAL_DEVELOPMENT_INDICATORS =
+            List.of(".git", "package.json", "pnpm-lock.yaml", "yarn.lock", "package-lock.json", "node_modules");
+
+    private final ExtensionClient client;
+
+    private final ThemeRootGetter themeRoot;
+    private final SystemVersionSupplier systemVersionSupplier;
+    private final TemplateEngineManager templateEngineManager;
+    private final ThemeLayoutCompatibilityChecker themeLayoutCompatibilityChecker;
+
+    private RetryTemplate retryTemplate = new RetryTemplate(RetryPolicy.builder()
+            .backOff(new FixedBackOff(300, 20))
+            .predicate(IllegalStateException.class::isInstance)
+            .build());
+
+    /**
+     * Set retry template. Only for testing purpose.
+     *
+     * @param retryTemplate the retry template
+     */
+    void setRetryTemplate(RetryTemplate retryTemplate) {
+        this.retryTemplate = retryTemplate;
+    }
+
+    @Override
+    public Result reconcile(Request request) {
+        client.fetch(Theme.class, request.name()).ifPresent(theme -> {
+            if (isDeleted(theme)) {
+                if (removeFinalizers(theme.getMetadata(), Set.of(FINALIZER_NAME))) {
+                    cleanUpResources(theme);
+                    client.update(theme);
+                }
+                return;
+            }
+            addFinalizers(theme.getMetadata(), Set.of(FINALIZER_NAME));
+
+            reloadThemeExtensions(theme);
+            themeSettingDefaultConfig(theme);
+            reconcileStatus(theme);
+            client.update(theme);
+        });
+        return new Result(false, null);
+    }
+
+    @Override
+    public Controller setupWith(ControllerBuilder builder) {
+        return builder.extension(new Theme()).build();
+    }
+
+    private void reloadThemeExtensions(Theme theme) {
+        var themeName = theme.getMetadata().getName();
+        var currentThemeRoot = this.themeRoot.get().resolve(themeName);
+        var extensions = ThemeUtils.loadThemeResources(currentThemeRoot);
+        extensions.stream()
+                .filter(e -> ExtensionWhitelist.of(theme).isAllowed(e))
+                .forEach(e -> {
+                    populateThemeNameLabel(e, themeName);
+                    client.fetch(e.groupVersionKind(), e.getMetadata().getName())
+                            .ifPresentOrElse(
+                                    existing -> {
+                                        e.getMetadata()
+                                                .setVersion(
+                                                        existing.getMetadata().getVersion());
+                                        log.debug(
+                                                "Updating extension [{}] for theme [{}]",
+                                                e.getMetadata().getName(),
+                                                themeName);
+                                        client.update(e);
+                                    },
+                                    () -> {
+                                        log.debug(
+                                                "Creating extension [{}] for theme [{}]",
+                                                e.getMetadata().getName(),
+                                                themeName);
+                                        client.create(e);
+                                    });
+                });
+    }
+
+    private static void populateThemeNameLabel(Unstructured unstructured, String themeName) {
+        Map<String, String> labels = unstructured.getMetadata().getLabels();
+        if (labels == null) {
+            labels = new HashMap<>();
+            unstructured.getMetadata().setLabels(labels);
+        }
+        labels.put(Theme.THEME_NAME_LABEL, themeName);
+    }
+
+    void reconcileStatus(Theme theme) {
+        var status = theme.getStatus();
+        if (status == null) {
+            status = new Theme.ThemeStatus();
+            theme.setStatus(status);
+        }
+        var name = theme.getMetadata().getName();
+        var themePath = themeRoot.get().resolve(name);
+        status.setLocation(themePath.toAbsolutePath().toString());
+        status.setInDevelopment(hasLocalDevelopmentIndicators(themePath));
+        status.setScreenshot(ThemeScreenshots.findScreenshot(themePath)
+                .map(screenshot -> ThemeScreenshots.buildScreenshotUrl(name, screenshot))
+                .orElse(null));
+        status.setEntry(buildUiAssetUrlIfReadable(theme, ThemeUiResources.JS_BUNDLE));
+        status.setStylesheet(buildUiAssetUrlIfReadable(theme, ThemeUiResources.CSS_BUNDLE));
+        status.setPageLayout(themeLayoutCompatibilityChecker.check(themePath));
+
+        status.setPhase(Theme.ThemePhase.READY);
+        var conditionBuilder = Condition.builder()
+                .type(Theme.ThemePhase.READY.name())
+                .status(ConditionStatus.TRUE)
+                .reason(Theme.ThemePhase.READY.name())
+                .message(StringUtils.EMPTY)
+                .lastTransitionTime(Instant.now());
+
+        // Check if this theme version is match requires param.
+        var normalVersion = systemVersionSupplier.get().toStableVersion().toString();
+        var requires = theme.getSpec().getRequires();
+        if (!VersionUtils.satisfiesRequires(normalVersion, requires)) {
+            status.setPhase(Theme.ThemePhase.FAILED);
+            conditionBuilder
+                    .type(Theme.ThemePhase.FAILED.name())
+                    .status(ConditionStatus.FALSE)
+                    .reason("UnsatisfiedRequiresVersion")
+                    .message(String.format(
+                            "Theme requires a minimum system version of [%s], and you have [%s].",
+                            requires, normalVersion));
+        }
+        Theme.nullSafeConditionList(theme).addAndEvictFIFO(conditionBuilder.build());
+    }
+
+    private static boolean hasLocalDevelopmentIndicators(Path themePath) {
+        return LOCAL_DEVELOPMENT_INDICATORS.stream().anyMatch(indicator -> Files.exists(themePath.resolve(indicator)));
+    }
+
+    private String buildUiAssetUrlIfReadable(Theme theme, String resourceName) {
+        var name = theme.getMetadata().getName();
+        var resource = ThemeUiResources.getBundleResource(themeRoot.get(), name, resourceName);
+        if (resource == null) {
+            return null;
+        }
+        return ThemeUiResources.buildAssetUrl(
+                name, resourceName, theme.getSpec().getVersion());
+    }
+
+    private void themeSettingDefaultConfig(Theme theme) {
+        var spec = theme.getSpec();
+        var settingName = spec.getSettingName();
+        if (StringUtils.isBlank(settingName)) {
+            return;
+        }
+        var configMapName = spec.getConfigMapName();
+        if (StringUtils.isBlank(configMapName)) {
+            configMapName = UUID.randomUUID().toString();
+        }
+        spec.setConfigMapName(configMapName);
+        SettingUtils.createOrUpdateConfigMap(client, settingName, configMapName);
+    }
+
+    private void cleanUpResources(Theme theme) {
+        reconcileThemeDeletion(theme);
+    }
+
+    private void reconcileThemeDeletion(Theme theme) {
+        templateEngineManager.clearCache(theme.getMetadata().getName()).block(BLOCKING_TIMEOUT);
+        // delete theme setting form
+        var settingName = theme.getSpec().getSettingName();
+        if (StringUtils.isNotBlank(settingName)) {
+            client.fetch(Setting.class, settingName).ifPresent(client::delete);
+            try {
+                retryTemplate.execute(() -> {
+                    client.fetch(Setting.class, settingName).ifPresent(setting -> {
+                        throw new IllegalStateException("Waiting for setting to be deleted.");
+                    });
+                    return null;
+                });
+            } catch (RetryException e) {
+                throw Exceptions.propagate(e);
+            }
+        }
+        // delete annotation setting
+        deleteAnnotationSettings(theme.getMetadata().getName());
+        deleteThemeFiles(theme);
+    }
+
+    private void deleteAnnotationSettings(String themeName) {
+        var result = listAnnotationSettingsByThemeName(themeName);
+
+        for (AnnotationSetting annotationSetting : result) {
+            client.delete(annotationSetting);
+        }
+
+        try {
+            retryTemplate.execute(() -> {
+                var annotationSettings = listAnnotationSettingsByThemeName(themeName);
+                if (annotationSettings.isEmpty()) {
+                    return null;
+                }
+                throw new IllegalStateException("Waiting for annotation settings to be deleted.");
+            });
+        } catch (RetryException e) {
+            throw Exceptions.propagate(e);
+        }
+    }
+
+    private List<AnnotationSetting> listAnnotationSettingsByThemeName(String themeName) {
+        return client.list(
+                AnnotationSetting.class,
+                annotationSetting -> {
+                    Map<String, String> labels = MetadataUtil.nullSafeLabels(annotationSetting);
+                    return themeName.equals(labels.get(Theme.THEME_NAME_LABEL));
+                },
+                null);
+    }
+
+    private void deleteThemeFiles(Theme theme) {
+        var themeDir = themeRoot.get().resolve(theme.getMetadata().getName());
+        try {
+            FileSystemUtils.deleteRecursively(themeDir);
+        } catch (IOException e) {
+            throw new ThemeUninstallException("Failed to delete theme files.", e);
+        }
+    }
+
+    static class ExtensionWhitelist {
+
+        private final Set<AllowedExtension> rules;
+
+        private ExtensionWhitelist(Theme theme) {
+            this.rules = getRules(theme);
+        }
+
+        public static ExtensionWhitelist of(Theme theme) {
+            return new ExtensionWhitelist(theme);
+        }
+
+        public boolean isAllowed(Unstructured unstructured) {
+            return this.rules.stream().anyMatch(rule -> rule.matches(unstructured));
+        }
+
+        private Set<AllowedExtension> getRules(Theme theme) {
+            var rules = new HashSet<AllowedExtension>();
+            rules.add(AllowedExtension.of(AnnotationSetting.class));
+            rules.add(AllowedExtension.of(NotificationTemplate.class));
+
+            var configMapName = theme.getSpec().getConfigMapName();
+            if (StringUtils.isNotBlank(configMapName)) {
+                rules.add(AllowedExtension.of(ConfigMap.class, configMapName));
+            }
+
+            var settingName = theme.getSpec().getSettingName();
+            if (StringUtils.isNotBlank(settingName)) {
+                rules.add(AllowedExtension.of(Setting.class, settingName));
+            }
+            return rules;
+        }
+    }
+
+    record AllowedExtension(String apiGroup, String kind, String name) {
+        AllowedExtension {
+            Assert.notNull(apiGroup, "The apiGroup must not be null");
+            Assert.notNull(kind, "Kind must not be null");
+        }
+
+        public static <E extends Extension> AllowedExtension of(Class<E> clazz) {
+            return of(clazz, null);
+        }
+
+        public static <E extends Extension> AllowedExtension of(Class<E> clazz, String name) {
+            var gvk = GroupVersionKind.fromExtension(clazz);
+            return new AllowedExtension(gvk.group(), gvk.kind(), name);
+        }
+
+        public boolean matches(Unstructured unstructured) {
+            var groupVersionKind = unstructured.groupVersionKind();
+            return this.apiGroup.equals(groupVersionKind.group())
+                    && this.kind.equals(groupVersionKind.kind())
+                    && (this.name == null
+                            || this.name.equals(unstructured.getMetadata().getName()));
+        }
+    }
+}

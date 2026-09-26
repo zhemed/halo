@@ -1,0 +1,25 @@
+@use "base.scss";
+@use "resizer.scss";
+@use "table.scss";
+@use "draggable.scss";
+@use "columns.scss";
+@use "search.scss";
+@use "format-brush.scss";
+@use "gap-cursor.scss";
+@use "drop-cursor.scss";
+@use "node-select.scss";
+@use "range-selection.scss";
+@use "details.scss";
+@use "figure.scss";
+
+.halo-rich-text-editor {
+  .ProseMirror {
+    :where(
+      * > :first-child,
+      * > .ProseMirror-gapcursor:first-child + *,
+      [data-editor-ui="true"] + *
+    ) {
+      margin-top: 0 !important;
+    }
+  }
+}

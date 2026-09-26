@@ -1,0 +1,54 @@
+package run.halo.app.plugin;
+
+import java.util.List;
+import org.pf4j.PluginManager;
+import org.pf4j.PluginWrapper;
+import org.springframework.context.ApplicationContext;
+
+/**
+ * Plugin manager for Spring-based applications.
+ *
+ * @author johnniang
+ * @since 2.12.0
+ */
+public interface SpringPluginManager extends PluginManager {
+
+    /**
+     * Gets the root application context.
+     *
+     * @return the root application context
+     */
+    ApplicationContext getRootContext();
+
+    /**
+     * Get the shared application context among plugins.
+     *
+     * @return the shared application context
+     */
+    ApplicationContext getSharedContext();
+
+    /**
+     * Get all dependents recursively.
+     *
+     * @param pluginId plugin id
+     * @return a list of plugin wrapper. The order of the list is from the farthest dependent to the nearest dependent.
+     * @since 2.16.0
+     */
+    List<PluginWrapper> getDependents(String pluginId);
+
+    /**
+     * Gets all started plugins.
+     *
+     * @return a list of started plugins. Mutable.
+     *     <p>Note: The plugin inside this list may not be really started.
+     */
+    @Override
+    List<PluginWrapper> getStartedPlugins();
+
+    /**
+     * Gets all really started plugins.
+     *
+     * @return a list of really started plugins. Immutable.
+     */
+    List<PluginWrapper> startedPlugins();
+}

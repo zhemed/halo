@@ -1,0 +1,278 @@
+package run.halo.app.core.reconciler;
+
+import static run.halo.app.extension.ExtensionUtil.addFinalizers;
+import static run.halo.app.extension.ExtensionUtil.defaultSort;
+import static run.halo.app.extension.ExtensionUtil.isDeleted;
+import static run.halo.app.extension.ExtensionUtil.removeFinalizers;
+import static run.halo.app.extension.index.query.Queries.equal;
+
+import java.net.URI;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
+import org.springframework.web.util.UriComponentsBuilder;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import run.halo.app.core.extension.Device;
+import run.halo.app.core.extension.RememberMeToken;
+import run.halo.app.core.extension.RoleBinding;
+import run.halo.app.core.extension.User;
+import run.halo.app.core.extension.UserConnection;
+import run.halo.app.core.extension.attachment.Attachment;
+import run.halo.app.core.extension.service.AttachmentService;
+import run.halo.app.core.user.service.RoleService;
+import run.halo.app.core.user.service.UserPreCreatingHandler;
+import run.halo.app.core.user.service.UserService;
+import run.halo.app.extension.ExtensionClient;
+import run.halo.app.extension.ListOptions;
+import run.halo.app.extension.controller.Controller;
+import run.halo.app.extension.controller.ControllerBuilder;
+import run.halo.app.extension.controller.Reconciler;
+import run.halo.app.extension.controller.Reconciler.Request;
+import run.halo.app.extension.controller.RequeueException;
+import run.halo.app.infra.AnonymousUserConst;
+import run.halo.app.infra.ExternalUrlSupplier;
+import run.halo.app.infra.utils.JsonUtils;
+import run.halo.app.infra.utils.ReactiveUtils;
+import run.halo.app.security.PersonalAccessToken;
+import run.halo.app.security.device.DeviceService;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class UserReconciler implements Reconciler<Request>, UserPreCreatingHandler {
+
+    private static final Duration BLOCKING_TIMEOUT = ReactiveUtils.DEFAULT_TIMEOUT;
+
+    private static final String FINALIZER_NAME = "user-protection";
+    private final ExtensionClient client;
+    private final ExternalUrlSupplier externalUrlSupplier;
+    private final RoleService roleService;
+    private final AttachmentService attachmentService;
+    private final UserService userService;
+    private final DeviceService deviceService;
+
+    @Override
+    public Mono<Void> preCreating(User user) {
+        addFinalizers(user.getMetadata(), Set.of(FINALIZER_NAME));
+        return Mono.empty();
+    }
+
+    @Override
+    public Result reconcile(Request request) {
+        client.fetch(User.class, request.name()).ifPresent(user -> {
+            if (isDeleted(user)) {
+                var rememberMeTokensPending = deleteUserRememberMeTokens(request.name());
+                var devicesPending = deleteUserDevices(request.name());
+                var personalAccessTokensPending = deleteUserPersonalAccessTokens(request.name());
+                var connectionsPending = deleteUserConnections(request.name());
+                var roleBindingsPending = deleteUserRoleBindings(request.name());
+                if (rememberMeTokensPending
+                        || devicesPending
+                        || personalAccessTokensPending
+                        || connectionsPending
+                        || roleBindingsPending) {
+                    throw new RequeueException(new Result(true, null), "User data is not deleted yet");
+                }
+                removeFinalizers(user.getMetadata(), Set.of(FINALIZER_NAME));
+                client.update(user);
+                return;
+            }
+            addFinalizers(user.getMetadata(), Set.of(FINALIZER_NAME));
+            ensureRoleNamesAnno(user);
+            updatePermalink(user);
+            handleAvatar(user);
+            checkVerifiedEmail(user);
+            client.update(user);
+        });
+        return new Result(false, null);
+    }
+
+    private void checkVerifiedEmail(User user) {
+        var username = user.getMetadata().getName();
+        if (!user.getSpec().isEmailVerified()) {
+            return;
+        }
+        var email = user.getSpec().getEmail();
+        if (StringUtils.isBlank(email)) {
+            return;
+        }
+        if (checkEmailInUse(username, email)) {
+            user.getSpec().setEmailVerified(false);
+        }
+    }
+
+    private Boolean checkEmailInUse(String username, String email) {
+        return userService
+                .listByEmail(email)
+                .filter(existUser -> existUser.getSpec().isEmailVerified())
+                .filter(existUser -> !existUser.getMetadata().getName().equals(username))
+                .hasElements()
+                .blockOptional(BLOCKING_TIMEOUT)
+                .orElse(false);
+    }
+
+    private void handleAvatar(User user) {
+        var annotations =
+                Optional.ofNullable(user.getMetadata().getAnnotations()).orElseGet(HashMap::new);
+        user.getMetadata().setAnnotations(annotations);
+
+        var avatarAttachmentName = annotations.get(User.AVATAR_ATTACHMENT_NAME_ANNO);
+        var oldAvatarAttachmentName = annotations.get(User.LAST_AVATAR_ATTACHMENT_NAME_ANNO);
+        // remove old avatar if needed
+        if (StringUtils.isNotBlank(oldAvatarAttachmentName)
+                && !StringUtils.equals(avatarAttachmentName, oldAvatarAttachmentName)) {
+            client.fetch(Attachment.class, oldAvatarAttachmentName).ifPresent(client::delete);
+            annotations.remove(User.LAST_AVATAR_ATTACHMENT_NAME_ANNO);
+        }
+
+        var spec = user.getSpec();
+        if (StringUtils.isBlank(avatarAttachmentName)) {
+            if (StringUtils.isNotBlank(spec.getAvatar())) {
+                log.info("Remove avatar for user({})", user.getMetadata().getName());
+            }
+            spec.setAvatar(null);
+            return;
+        }
+        client.fetch(Attachment.class, avatarAttachmentName)
+                .flatMap(
+                        attachment -> attachmentService.getPermalink(attachment).blockOptional(BLOCKING_TIMEOUT))
+                .map(URI::toString)
+                .ifPresentOrElse(
+                        avatar -> {
+                            if (!Objects.equals(avatar, spec.getAvatar())) {
+                                log.info(
+                                        "Update avatar for user({}) to {}",
+                                        user.getMetadata().getName(),
+                                        avatar);
+                            }
+                            spec.setAvatar(avatar);
+                            // reset last avatar
+                            annotations.put(User.LAST_AVATAR_ATTACHMENT_NAME_ANNO, avatarAttachmentName);
+                        },
+                        () -> {
+                            throw new RequeueException(
+                                    new Result(true, null),
+                                    "Avatar permalink(%s) is not available yet.".formatted(avatarAttachmentName));
+                        });
+    }
+
+    private void ensureRoleNamesAnno(User user) {
+        roleService
+                .getRolesByUsername(user.getMetadata().getName())
+                .collectList()
+                .map(JsonUtils::objectToJson)
+                .doOnNext(roleNamesJson -> {
+                    var annotations = Optional.ofNullable(user.getMetadata().getAnnotations())
+                            .orElseGet(HashMap::new);
+                    user.getMetadata().setAnnotations(annotations);
+                    annotations.put(User.ROLE_NAMES_ANNO, roleNamesJson);
+                })
+                .block(BLOCKING_TIMEOUT);
+    }
+
+    private void updatePermalink(User user) {
+        var name = user.getMetadata().getName();
+        if (AnonymousUserConst.isAnonymousUser(name)) {
+            // anonymous user is not allowed to have permalink
+            return;
+        }
+        var status = Optional.ofNullable(user.getStatus()).orElseGet(User.UserStatus::new);
+        user.setStatus(status);
+        status.setPermalink(getUserPermalink(user));
+    }
+
+    private String getUserPermalink(User user) {
+        return UriComponentsBuilder.fromUri(externalUrlSupplier.get())
+                .pathSegment("authors", user.getMetadata().getName())
+                .toUriString();
+    }
+
+    boolean deleteUserConnections(String username) {
+        var userConnections = listConnectionsByUsername(username);
+        if (CollectionUtils.isEmpty(userConnections)) {
+            return false;
+        }
+        userConnections.forEach(client::delete);
+        return true;
+    }
+
+    boolean deleteUserDevices(String username) {
+        var listOptions = ListOptions.builder()
+                .andQuery(equal("spec.principalName", username))
+                .build();
+        var devices = client.listAll(Device.class, listOptions, defaultSort());
+        if (CollectionUtils.isEmpty(devices)) {
+            return false;
+        }
+        Flux.fromIterable(devices)
+                .filter(device -> !isDeleted(device))
+                .concatMap(device ->
+                        deviceService.revoke(username, device.getMetadata().getName()))
+                .then()
+                .block(BLOCKING_TIMEOUT);
+        return true;
+    }
+
+    boolean deleteUserRememberMeTokens(String username) {
+        var listOptions =
+                ListOptions.builder().andQuery(equal("spec.username", username)).build();
+        var tokens = client.listAll(RememberMeToken.class, listOptions, defaultSort());
+        if (CollectionUtils.isEmpty(tokens)) {
+            return false;
+        }
+        tokens.forEach(client::delete);
+        return true;
+    }
+
+    boolean deleteUserPersonalAccessTokens(String username) {
+        var listOptions =
+                ListOptions.builder().andQuery(equal("spec.username", username)).build();
+        var tokens = client.listAll(PersonalAccessToken.class, listOptions, defaultSort());
+        if (CollectionUtils.isEmpty(tokens)) {
+            return false;
+        }
+        tokens.forEach(client::delete);
+        return true;
+    }
+
+    List<UserConnection> listConnectionsByUsername(String username) {
+        var listOptions =
+                ListOptions.builder().andQuery(equal("spec.username", username)).build();
+        return client.listAll(UserConnection.class, listOptions, defaultSort());
+    }
+
+    boolean deleteUserRoleBindings(String username) {
+        var subject = new RoleBinding.Subject(User.KIND, username, User.GROUP);
+        var roleBindings = roleService
+                .listRoleBindings(subject)
+                .collectList()
+                .blockOptional(BLOCKING_TIMEOUT)
+                .orElseGet(List::of);
+        if (CollectionUtils.isEmpty(roleBindings)) {
+            return false;
+        }
+        roleBindings.forEach(binding -> {
+            binding.getSubjects().removeIf(RoleBinding.Subject.isUser(username));
+            if (CollectionUtils.isEmpty(binding.getSubjects())) {
+                client.delete(binding);
+            } else {
+                client.update(binding);
+            }
+        });
+        return true;
+    }
+
+    @Override
+    public Controller setupWith(ControllerBuilder builder) {
+        return builder.extension(new User()).build();
+    }
+}

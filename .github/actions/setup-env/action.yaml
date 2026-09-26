@@ -1,0 +1,33 @@
+name: Setup Environment
+description: Setup environment to check and build Halo, including console and core projects.
+
+inputs:
+  node-version:
+    description: Node.js version.
+    required: false
+    default: "24"
+
+  java-version:
+    description: Java version.
+    required: false
+    default: "21"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Vite+
+      uses: voidzero-dev/setup-vp@v1
+      with:
+        working-directory: ui
+        version-file: pnpm-workspace.yaml
+        node-version: ${{ inputs.node-version }}
+        cache: true
+        cache-dependency-path: pnpm-lock.yaml
+        run-install: false
+
+    - name: Setup JDK
+      uses: actions/setup-java@v5
+      with:
+        distribution: "temurin"
+        cache: "gradle"
+        java-version: ${{ inputs.java-version }}
