@@ -82,7 +82,8 @@ jobs:
 
   build-and-publish-container-image-with-buildpacks:
     needs: build
-    if: always() && needs.build.result == 'success' && (github.event_name == 'push' || github.event_name == 'release')
+    # fork-guard: 分叉定制——上游发布作业只应在官方仓库运行（分叉无权推送官方 registry）
+    if: always() && needs.build.result == 'success' && (github.event_name == 'push' || github.event_name == 'release') && github.repository == 'halo-dev/halo'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -107,7 +108,8 @@ jobs:
         run: ./gradlew publishToAllRegistries -Prelease=${{ github.event_name == 'release' && 'true' || 'false' }}
 
   docker-build-and-push:
-    if: always() && needs.build.result == 'success' && (github.event_name == 'push' || github.event_name == 'release')
+    # fork-guard: 分叉定制——同上，官方 registry 推送仅在官方仓库执行
+    if: always() && needs.build.result == 'success' && (github.event_name == 'push' || github.event_name == 'release') && github.repository == 'halo-dev/halo'
     runs-on: ubuntu-latest
     needs: build
     steps:

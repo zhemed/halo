@@ -59,6 +59,38 @@ if [ -f "$ENDPOINT" ]; then
     || fail "后端：密码字符集白名单丢失（超出定制范围）"
 fi
 
+# --- 补丁 2：上游发布作业的本地化守卫（分叉无权推送官方 registry）---
+# 校验方式：找 fork-guard 标记，要求紧随其后的 if 行真的带官方仓库守卫。
+# 只查标记存在是不够的——标记留着、守卫被删的情况必须能被抓到。
+UPSTREAM_WF=".github/workflows/halo.yaml"
+if [ -f "$UPSTREAM_WF" ]; then
+  guard_ok=$(python3 - "$UPSTREAM_WF" <<'PYEOF'
+import sys, pathlib
+lines = pathlib.Path(sys.argv[1]).read_text(encoding='utf-8').splitlines()
+good = bad = 0
+for i, ln in enumerate(lines):
+    if '# fork-guard:' not in ln:
+        continue
+    for nxt in lines[i + 1:i + 4]:
+        s = nxt.strip()
+        if not s:
+            continue
+        if s.startswith('if:') and "github.repository == 'halo-dev/halo'" in s:
+            good += 1
+        else:
+            bad += 1
+        break
+print(f'{good} {bad}')
+PYEOF
+)
+  good="${guard_ok%% *}"; bad="${guard_ok##* }"
+  if [ "$good" -ge 2 ] && [ "$bad" -eq 0 ]; then
+    ok "上游 CI：$good 处发布作业守卫标记都与真实守卫条件配对"
+  else
+    fail "上游 CI：守卫不完整（配对 $good 处 / 未配对 $bad 处）。标记存在但 if 条件缺少 \`github.repository == 'halo-dev/halo'\` 时会命中此项。"
+  fi
+fi
+
 # --- 基线声明存在，便于升级时不迷失 ---
 [ -f FORK_BASE ] && ok "基线文件 FORK_BASE = $(tr -d '\n' < FORK_BASE)" \
   || fail "缺少 FORK_BASE（升级流程依赖它推导基线，见 UPSTREAM.md）"
