@@ -94,6 +94,19 @@ curl -fsSL https://raw.githubusercontent.com/zhemed/halo/main/install.sh | bash
 站点数据在部署目录的 `./halo2`（含 `keys/`、附件、备份）与 `./db`（PostgreSQL 数据）。
 **备份 = 打包这两个目录**；恢复 = 放回原位后 `docker compose --env-file halo.env up -d`。
 
+## 4.4 DSH 侧的执行闸门（任务必须先建）
+
+本机装了一道 `PreToolUse` 钩子（`deploy/hooks/trellis-pre-tool-gate.mjs` 为仓库内副本）：
+在 Trellis 项目里，**本轮若尚未建任务，任何工具调用都会被拦截**（exit 2）。
+
+由来：2026-09-27 出现"先动手、后补任务"的违规，用户要求把只靠自觉的规则变成机器强制。
+
+- 安装与配置见 `deploy/hooks/README.md`
+- **改配置后需新开会话才生效**（钩子在会话启动时加载）
+- 逃生开关：`TRELLIS_GATE=off` 或 `touch ~/.dsh/hooks/trellis-gate-disabled`
+- 自测：`node ~/.dsh/hooks/trellis-pre-tool-gate.mjs --selftest`
+- 运行痕迹：`~/.dsh/hooks/trellis-gate.log`
+
 ## 5. 上游升级
 
 ```bash
